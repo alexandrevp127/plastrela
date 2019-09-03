@@ -3675,19 +3675,19 @@ let main = {
                             bulkreservas = [];
                             let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
                             for (let i = 0; i < volumes.length; i++) {
-                                let reservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volumes[i].id } });
+                                let reservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volumes[i].id, apontado: { [db.Op.or]: [false, null] } } });
                                 let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: obj.req.body.idopetapa } });
                                 let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
                                 let pcp_opep = await db.getModel('pcp_opep').findOne({ where: { idop: op.id } });
                                 let ven_pedidoitem = await db.getModel('ven_pedidoitem').findOne({ where: { idpedido: pcp_opep ? pcp_opep.idpedido : 0, idversao: op.idversao } });
-                                if (!ven_pedidoitem) {
-                                    return application.error(obj.res, { msg: 'Não foi encontrado nenhum vínculo de pedido/item com a OP informada' });
-                                }
+                                // if (!ven_pedidoitem) {
+                                //     return application.error(obj.res, { msg: 'Não foi encontrado nenhum vínculo de pedido/item com a OP informada' });
+                                // }
                                 switch (reservas.length) {
                                     case 0:
                                         bulkreservas.push({
                                             idvolume: volumes[i].id
-                                            , idpedidoitem: ven_pedidoitem.id
+                                            , idpedidoitem: ven_pedidoitem ? ven_pedidoitem.id : null
                                             , qtd: volumes[i].qtdreal
                                             , idopetapa: obj.req.body.idopetapa
                                             , apontado: false
