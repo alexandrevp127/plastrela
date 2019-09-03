@@ -3694,7 +3694,7 @@ let main = {
                                         });
                                         break;
                                     case 1:
-                                        if (reservas[0].idpedidoitem == ven_pedidoitem.id) {
+                                        if (ven_pedidoitem && reservas[0].idpedidoitem == ven_pedidoitem.id) {
                                             reservas[0].idopetapa = opetapa.id;
                                             await reservas[0].save({ iduser: obj.req.user.id });
                                         } else {
