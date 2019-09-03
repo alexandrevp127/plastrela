@@ -4583,8 +4583,7 @@ let main = {
                         let reservas = await db.getModel('est_volumereserva').findAll({ where: { id: { [db.Op.in]: obj.ids } } });
                         for (let i = 0; i < reservas.length; i++) {
                             if (reservas[i].apontado) {
-                                application.error(obj.res, { msg: 'Não é possível excluir esta reserva' });
-                                return obj.t.rollback();
+                                return application.error(obj.res, { msg: 'Não é possível excluir esta reserva' });
                             }
                             if (reservas[i].idprerequisicao) {
                                 let prerequisicao = await db.getModel('est_prerequisicao').findOne({ where: { id: reservas[i].idprerequisicao } });
@@ -6344,7 +6343,6 @@ let main = {
                 }
                 , ondelete: async function (obj, next) {
                     try {
-
                         let config = await db.getModel('pcp_config').findOne();
                         let tempos = await db.getModel('pcp_approducaotempo').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
                         for (let i = 0; i < tempos.length; i++) {
@@ -6352,12 +6350,9 @@ let main = {
                             if (oprecurso.idestado == config.idestadoencerrada) {
                                 return application.error(obj.res, { msg: 'Não é possível apagar apontamentos de OP encerrada' });
                             }
+                            await db.getModel('pcp_approducao').update({ integrado: false }, { transaction: obj.transaction, where: { idoprecurso: tempos[i].pcp_approducao.idoprecurso } });
                         }
-
-                        let deleted = await next(obj);
-                        if (deleted.success) {
-                            db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: tempos[0].idoprecurso } });
-                        }
+                        await next(obj);
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
