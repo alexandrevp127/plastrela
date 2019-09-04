@@ -6866,9 +6866,12 @@ let main = {
                                     from
                                         pcp_op op
                                     left join pcp_opetapa ope on (op.id = ope.idop)
+                                    left join pcp_etapa e on (ope.idetapa = e.id)
+                                    left join pcp_tprecurso tpr on (e.idtprecurso = tpr.id)
                                     where
                                         op.id = ${op.id}
                                         and ope.seq > ${opetapa.seq}
+                                        and tpr.codigo not in (8)
                                     order by ope.seq
                                     `,
                                     { type: db.Sequelize.QueryTypes.SELECT });
