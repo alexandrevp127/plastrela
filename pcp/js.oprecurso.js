@@ -2,6 +2,9 @@ $(function () {
 
     if (application.isRegisterview) {
 
+        var $idrecurso = $('select[name="idrecurso"]');
+        $idrecurso.attr('data-where', 'id in (select r.id from pcp_recurso r left join pcp_tprecurso tpr on (r.idtprecurso = tpr.id) left join pcp_etapa e on (tpr.id = e.idtprecurso) where e.codigo = ' + $('input[name="etapa"]').val() + ')');
+
         function buscaCodigoBarra(codbar) {
             application.jsfunction('plastrela.pcp.apinsumo.__pegarVolume', {
                 idoprecurso: application.functions.getId()
