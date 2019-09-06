@@ -57,10 +57,10 @@ $(function () {
 
         var aux = 0;
         var tabletocount = [
-            'tableviewapontamento_de_producao_-_insumo'
-            , 'tableviewapontamento_de_producao_-_producao'
-            , 'tableviewapontamento_de_producao_-_perda'
-            , 'tableviewapontamento_de_producao_-_parada'
+            'viewapontamento_de_producao_-_insumo'
+            , 'viewapontamento_de_producao_-_producao'
+            , 'viewapontamento_de_producao_-_perda'
+            , 'viewapontamento_de_producao_-_parada'
         ]
         $(document).on('app-datatable', function (e, table) {
 
@@ -81,10 +81,10 @@ $(function () {
             }
 
             switch (table) {
-                case 'tableviewapontamento_de_producao_-_insumo':// Insumo
+                case 'viewapontamento_de_producao_-_insumo':// Insumo
                     tables[table].button($('.btn-success')).action(addinsumo);
                     break;
-                case 'tableviewapontamento_de_producao_-_producao':// Produção
+                case 'viewapontamento_de_producao_-_producao':// Produção
                     tables[table].button($('.btn-success')).action(function (e) {
                         application.jsfunction('plastrela.pcp.approducao.__adicionar', { idoprecurso: application.functions.getId() }, function (response) {
                             application.handlers.responseSuccess(response);
