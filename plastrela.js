@@ -28,7 +28,7 @@ let main = {
                         // Autenticar/Leitura
                         if (!obj.register.iduser_leitura) {
                             if (obj.register.atv_tipo.autenticarleitura) {
-                                let userauth = await db.getModel('users').findOne({ where: { username: obj.req.body.authuser, password: obj.req.body.authpass } })
+                                let userauth = await db.getModel('users').findOne({ where: { username: obj.req.body.authuser || null, password: obj.req.body.authpass || null } })
                                 if (userauth) {
                                     let single = await db.getModel('atv_atividade').findOne({ where: { id: obj.register.id } });
                                     single.iduser_leitura = userauth.id;
@@ -56,7 +56,7 @@ let main = {
                     let invalidfields = [];
                     let cds = await db.getModel('atv_tipo_cd').findAll({ include: [{ all: true }], where: { idtipo: obj.register.idtipo } });
                     for (let i = 0; i < cds.length; i++) {
-                        if (cds[i].obrigatorioc && !obj.req.body['cd' + cds[i].idcampodinamico]) {
+                        if (!obj.req.body._calendar && cds[i].obrigatorioc && !obj.req.body['cd' + cds[i].idcampodinamico]) {
                             invalidfields.push('cd' + cds[i].idcampodinamico);
                         }
                     }
@@ -11523,7 +11523,7 @@ let main = {
                                             , 'produto_qtd_pasta_padrao'
                                             , 'produto_aprovacao_arte'
                                             , 'produto_clicheria_cliente'
-                                        ].concat(validar_produto_geral));
+                                        ].concat(invalidfields, validar_produto_geral));
                                     }
 
                                     if (obj.register['p_aplicar_microfuros'] == 'Sim' && !obj.register['p_quantidade_microfuros']) {
