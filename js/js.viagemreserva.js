@@ -32,15 +32,14 @@ $(function () {
                 $('input[name="data2"]').siblings('label').parent().removeClass('hidden');
                 break;
             case 'Carro Plastrela':
-                $('input[name="local1"]').siblings('label').html('Local Retirada*');
-                $('input[name="data1"]').siblings('label').html('Data Retirada*');
-                $('input[name="hora1"]').siblings('label').html('Hora Retirada*');
-                $('input[name="local2"]').siblings('label').html('Local Devolução*');
-                $('input[name="data2"]').siblings('label').html('Data Devolução*');
+                $('input[name="local1"]').siblings('label').html('Origem*');
+                $('input[name="data1"]').siblings('label').html('Data*');
+                $('input[name="hora1"]').siblings('label').html('Hora*');
+                $('input[name="local2"]').siblings('label').html('Destino*');
 
-                $('input[name="hora1"]').siblings('label').parent().parent().removeClass('hidden');
                 $('input[name="local2"]').siblings('label').parent().parent().removeClass('hidden');
-                $('input[name="data2"]').siblings('label').parent().removeClass('hidden');
+                $('input[name="hora1"]').siblings('label').parent().parent().removeClass('hidden');
+                $('input[name="data2"]').siblings('label').parent().parent().addClass('hidden');
                 break;
             case 'Transfer':
                 $('input[name="local1"]').siblings('label').html('Origem*');
