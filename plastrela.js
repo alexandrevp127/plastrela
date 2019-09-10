@@ -3739,7 +3739,7 @@ let main = {
                                     return application.error(obj.res, { msg: `O volume ID ${volumes[i].id} já possui uma requisição em aberto` });
                                 }
                                 if ([1, 2, 504, 543].indexOf(caditem.est_grupo.codigo) >= 0) {
-                                    let reservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volumes[i].id } });
+                                    let reservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volumes[i].id, apontado: false } });
                                     if (reservas.length <= 0) {
                                         return application.error(obj.res, { msg: `O volume ID ${volumes[i].id} não possui reservas` });
                                     }
@@ -4295,6 +4295,22 @@ let main = {
                                 , query: `codigo ||  ' - ' || descricao`
                                 , multiple: 'multiple="multiple"'
                             });
+                            body += application.components.html.autocomplete({
+                                width: '12'
+                                , label: 'Subgrupo'
+                                , name: 'idsubgrupo'
+                                , model: 'est_subgrupo'
+                                , query: `(select g.codigo from est_grupo g where g.id = est_subgrupo.idgrupo) || '/' || codigo ||  ' - ' || descricao`
+                                , multiple: 'multiple="multiple"'
+                            });
+                            body += application.components.html.autocomplete({
+                                width: '12'
+                                , label: 'Produto'
+                                , name: 'idversao'
+                                , model: 'pcp_versao'
+                                , attribute: `descricaocompleta`
+                                , multiple: 'multiple="multiple"'
+                            });
 
                             body += application.components.html.radio({
                                 width: '12'
@@ -4320,9 +4336,15 @@ let main = {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                             }
                             let deposito = await db.getModel('est_deposito').findOne({ where: { id: obj.req.body.iddeposito } });
-                            let grupo = '';
+                            let where = [];
                             if (obj.req.body.idgrupo) {
-                                grupo = ` and g.id in (${obj.req.body.idgrupo})`;
+                                where.push(`g.id in (${obj.req.body.idgrupo})`);
+                            }
+                            if (obj.req.body.idsubgrupo) {
+                                where.push(`sg.id in (${obj.req.body.idsubgrupo})`);
+                            }
+                            if (obj.req.body.idversao) {
+                                where.push(`v.id in (${obj.req.body.idversao})`);
                             }
                             let sql = await db.sequelize.query(`
                                 select * from (select
@@ -4339,7 +4361,7 @@ let main = {
                                 where
                                     vol.consumido = false
                                     and vol.iddeposito = :iddeposito
-                                    ${grupo}
+                                    ${where.length > 0 ? ' and ' + where.join(' and ') : ''}
                                 group by 1,2,3
                                 order by ${obj.req.body.ordem == 'Código' ? '3,1,2' : '1,2,3'}) as x
 
@@ -4355,10 +4377,11 @@ let main = {
                                 left join pcp_versao v on (vol.idversao = v.id)
                                 left join cad_item i on (v.iditem = i.id)
                                 left join est_grupo g on (i.idgrupo = g.id)
+                                left join est_subgrupo sg on (i.idsubgrupo = sg.id)
                                 where
                                     vol.consumido = false
                                     and vol.iddeposito = :iddeposito
-                                    ${grupo}
+                                    ${where.length > 0 ? ' and ' + where.join(' and ') : ''}
                                 group by 1,2
                                 order by 1,2) as x
                             `, {
@@ -4583,7 +4606,7 @@ let main = {
                         let reservas = await db.getModel('est_volumereserva').findAll({ where: { id: { [db.Op.in]: obj.ids } } });
                         for (let i = 0; i < reservas.length; i++) {
                             if (reservas[i].apontado) {
-                                return application.error(obj.res, { msg: 'Não é possível excluir esta reserva' });
+                                return application.error(obj.res, { msg: 'Não é possível excluir reservas que foram apontadas' });
                             }
                             if (reservas[i].idprerequisicao) {
                                 let prerequisicao = await db.getModel('est_prerequisicao').findOne({ where: { id: reservas[i].idprerequisicao } });
