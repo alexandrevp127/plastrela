@@ -7517,12 +7517,15 @@ let main = {
                             }
                         }
 
+                        if (volume.iddeposito != recurso.iddepositoprodutivo && !recurso.permitirApontarDeposito) {
+                            return application.error(obj.res, { msg: `Não é possível apontar volumes de outro depósito` });
+                        }
+                        volume.iddeposito = recurso.iddepositoprodutivo;
+                        volume.iddepositoendereco = null;
                         volume.qtdreal = (qtdreal - qtd).toFixed(4);
                         if (parseFloat(volume.qtdreal) == 0) {
                             volume.consumido = true;
                         }
-                        volume.iddeposito = recurso.iddepositoprodutivo;
-                        volume.iddepositoendereco = null;
 
                         if (selects.length > 0) {
                             for (let i = 0; i < selects.length; i++) {
