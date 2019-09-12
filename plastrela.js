@@ -6798,8 +6798,7 @@ let main = {
 
                             let sql = [];
                             if (tprecurso.codigo == 8) {
-                                let deprevisora = await db.getModel('est_deposito').findOne({ where: { codigo: 11 } });
-                                sql.push({ idopetapa: opetapa.id, iddeposito: deprevisora.id });
+                                return application.error(obj.res, { msg: `Não é possível gerar volumes para revisora, aponte-os manualmente` });
                             } else {
                                 sql = await db.sequelize.query([1].indexOf(tprecurso.codigo) >= 0 ?
                                     `with et as (
@@ -9951,10 +9950,15 @@ let main = {
                         select
                             op
                             , idvolume 
-                            , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as qtd
+                            , pesoliquido
+                            , qtd
+                            , (select string_agg(mp.descricaocompleta, ', ') from pcp_apparada app left join pcp_motivoparada mp on (app.idmotivoparada = mp.id) where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as paradas
+                            , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as qtdparadas
                         from
                             (select
                                 v.id as idvolume
+                                , apv.pesoliquido
+                                , apv.qtd
                                 , opr.id as idoprecurso
                                 , op.codigo as op
                                 , (select min(dataini) from pcp_approducaotempo apt where apt.idapproducao = ap.id) as min
@@ -9974,6 +9978,8 @@ let main = {
                             });
 
                         let qtd = 0;
+                        let pesoliquido = 0;
+                        let qtdparadas = 0;
                         let report = {};
                         report.__title = obj.event.description;
                         report.__table = `
@@ -9981,23 +9987,34 @@ let main = {
                             <tr>
                                 <td style="text-align:center;"><strong>OP</strong></td>
                                 <td style="text-align:center;"><strong>Volume</strong></td>
+                                <td style="text-align:center;"><strong>Peso</strong></td>
+                                <td style="text-align:center;"><strong>Quantidade</strong></td>
                                 <td style="text-align:center;"><strong>Paradas</strong></td>
+                                <td style="text-align:center;"><strong>Qtd</strong></td>
                             </tr>
                         `;
                         for (let i = 0; i < sql.length; i++) {
                             report.__table += `
                             <tr>
-                                <td style="text-align:left;"> ${sql[i]['op']} </td>
-                                <td style="text-align:left;"> ${sql[i]['idvolume'] || ''} </td>
-                                <td style="text-align:right;"> ${sql[i]['qtd']} </td>
+                                <td style="text-align:center;"> ${sql[i]['op']} </td>
+                                <td style="text-align:center;"> ${sql[i]['idvolume'] || ''} </td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['pesoliquido'], 4)} </td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['qtd'], 3)} </td>
+                                <td style="text-align:center;"> ${sql[i]['paradas']} </td>
+                                <td style="text-align:center;"> ${sql[i]['qtdparadas']} </td>
                             </tr>
                             `;
-                            qtd += parseInt(sql[i]['qtd']);
+                            qtd += parseFloat(sql[i]['qtd']);
+                            pesoliquido += parseFloat(sql[i]['pesoliquido']);
+                            qtdparadas += parseInt(sql[i]['qtdparadas']);
                         }
                         report.__table += `
                             <tr>
-                                <td style="text-align:right;" colspan="2"> Total </td>
-                                <td style="text-align:right;"> ${qtd} </td>
+                                <td style="text-align:center;" colspan="2"><strong> Total </strong></td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(pesoliquido, 4)} </td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(qtd, 3)} </td>
+                                <td style="text-align:right;"> </td>
+                                <td style="text-align:center;"> ${qtdparadas} </td>
                             </tr>
                         </table>
                         `;
