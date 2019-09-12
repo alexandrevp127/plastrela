@@ -10000,7 +10000,7 @@ let main = {
                                 <td style="text-align:center;"> ${sql[i]['idvolume'] || ''} </td>
                                 <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['pesoliquido'], 4)} </td>
                                 <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['qtd'], 3)} </td>
-                                <td style="text-align:center;"> ${sql[i]['paradas']} </td>
+                                <td style="text-align:center;"> ${sql[i]['paradas'] || ''} </td>
                                 <td style="text-align:center;"> ${sql[i]['qtdparadas']} </td>
                             </tr>
                             `;
