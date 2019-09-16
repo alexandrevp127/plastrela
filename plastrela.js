@@ -7296,6 +7296,7 @@ let main = {
                         , label: 'Qtd para Consumir'
                         , name: 'qtd'
                         , precision: '4'
+                        , disabled: 'disabled="disabled"'
                     });
 
                     body += '<div class="hidden">';
