@@ -2618,30 +2618,20 @@ let main = {
                     try {
 
                         let f = application.functions;
-                        let pdfkit = require('pdfkit');
-                        let barcode = require('barcode-2-svg');
-                        let svgtopdfkit = require('svg-to-pdfkit');
 
                         if (obj.ids.length == 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
 
-                        const doc = new pdfkit({
-                            autoFirstPage: false
-                        });
-
-                        let config = await db.getModel('config').findOne({ raw: true });
-                        let image = JSON.parse(config.reportimage)[0];
-                        let filename = process.hrtime()[1] + '.pdf';
-                        let stream = doc.pipe(fs.createWriteStream(`${__dirname}/../../tmp/${process.env.NODE_APPNAME}/${filename}`));
+                        let reportAll = [];
 
                         let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }], raw: true });
                         for (let i = 0; i < volumes.length; i++) {
                             let volume = volumes[i];
+                            let report = {};
                             let versao = await db.getModel('pcp_versao').findOne({ where: { id: volume.idversao } });
                             let item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
                             let grupo = await db.getModel('est_grupo').findOne({ where: { id: item ? item.idgrupo : 0 } });
-
                             let nfentradaitem = await db.getModel('est_nfentradaitem').findOne({ where: { id: volume.idnfentradaitem } });
                             let nfentrada = await db.getModel('est_nfentrada').findOne({ where: { id: nfentradaitem ? nfentradaitem.idnfentrada : 0 } });
                             let approducaovolume = await db.getModel('pcp_approducaovolume').findOne({ where: { id: volume.idapproducaovolume } });
@@ -2699,337 +2689,71 @@ let main = {
                                     type: db.sequelize.QueryTypes.SELECT
                                     , replacements: { v1: volume.id }
                                 });
+                            report.id = volume.id;
+                            report.datainclusao = application.formatters.fe.date(volume.datahora);
+                            report.datavalidade = application.formatters.fe.date(volume.datavalidade) || '__/__/____';
+                            report.lote = volume.lote || '';
+                            report.produto = versao ? versao.descricaocompleta : '';
+                            report.qtd = application.formatters.fe.decimal(volume.qtdreal, 4);
+                            report.obs = application.functions.singleSpace(volume.observacao || '');
+                            report.fornecedor = nfentrada ? nfentrada.razaosocial : '';
+                            report.nfdocumento = nfentrada ? nfentrada.documento : '';
+                            report.nfdataemissao = nfentrada ? application.formatters.fe.date(nfentrada.dataemissao) : '__/__/____';
+                            report.nfoc = nfentradaitem ? nfentradaitem.oc : '';
+                            report.recurso = oprecurso_recurso ? oprecurso_recurso.codigo : '';
+                            report.etapa = etapa ? etapa.descricao : '';
+                            report.opmaeproduto = opmae ? opmae.pcp_versao.descricaocompleta : '';
 
-                            doc.addPage({ margin: 30 });
+                            let canvas = require("canvas").createCanvas();
+                            require('jsbarcode')(canvas, '-10-' + f.lpad(volume.id, 9, '0'), {
+                                format: "CODE39",
+                                lineColor: "#000",
+                                width: 7,
+                                height: 180,
+                                displayValue: true
+                            });
+                            report.barcode = canvas.toDataURL();
 
-                            let width1 = 27;
-                            let width1val = 20;
-
-                            let width2 = 24;
-                            let width2val = 25;
-
-                            let width3 = 5;
-                            let width3val = 21;
-
-                            let padstr = ' ';
-                            let md = 0.65;
 
                             if (grupo && grupo.codigo != 533 && grupo.codigo != 502) {
-
-                                doc.moveTo(25, 25)
-                                    .lineTo(589, 25) //top
-                                    .lineTo(589, 445) //right
-                                    .lineTo(25, 445) //bottom
-                                    .lineTo(25, 25) //bottom
-                                    .stroke();
-
-                                if (fs.existsSync(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${image.id}.${image.type}`)) {
-                                    doc.image(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${image.id}.${image.type}`, 35, 33, { width: 20 });
-                                }
-
-                                doc.moveTo(25, 60)
-                                    .lineTo(589, 60) // Cabeçalho
-                                    .stroke();
-
-                                doc.moveTo(25, 75)
-                                    .lineTo(589, 75) // Cabeçalho
-                                    .stroke();
-
-                                // Title
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .fontSize(11)
-                                    .text('IDENTIFICAÇÃO E STATUS DO VOLUME Nº ' + volume.id, 165, 40);
-
-
-                                doc
-                                    .fontSize(7.5)
-                                    .text('Anexo - 03', 500, 35)
-                                    .text('Nº PPP - 05 Revisão: 10', 460, 50);
-
-                                doc
-                                    .moveTo(240, 75)
-                                    .lineTo(240, 104)
-                                    .stroke()
-                                    .moveTo(460, 75)
-                                    .lineTo(460, 117)
-                                    .stroke();
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Produto: ', width1, padstr), 30, 67, { continued: true })
-                                    .font('Courier').text(f.rpad(versao.descricaocompleta, 87, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Formato: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(formato.length > 0 ?
-                                        etapa && etapa.codigo == 10 ? formato[0].largura + ' x ' + formato[0].espessura :
-                                            etapa && etapa.codigo == 20 ? formato[0].implargura + ' x ' + formato[0].impespessura :
-                                                etapa && (etapa.codigo == 30 || etapa.codigo == 35) ?
-                                                    formato[0].larguralam + ' x ' + formato[0].espessuralam : ''
-                                        : ''
-                                        , width1val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Peso: ', width2 - (approducaovolume ? 16 : 0), padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(
-                                        approducaovolume ?
-                                            'Bruto:' + application.formatters.fe.decimal(parseFloat(volume.qtdreal) + parseFloat(approducaovolume.tara), 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) :
-                                            application.formatters.fe.decimal(volume.qtdreal, 2) + ' KG'
-                                        , width2val + (approducaovolume ? 16 : 0), padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Mts: ', width3, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(application.formatters.fe.decimal(volume.metragem || 0, 4) + ' M', width3val, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Pedido: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '', width1val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Ordem de Compra: ', width2, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(nfentradaitem ? nfentradaitem.oc : '', width2val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('OP: ', width3, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.rpad(op ? op.codigo : '', width3val, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').fontSize(7.5).text(f.lpad('Produto: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(opmae ? opmae.pcp_versao.descricaocompleta : '', width1val + width2val + 24, padstr) + ' ', { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('OP Mãe: ', 8, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.rpad(opmae ? opmae.codigo : '', width3val - 5, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').fontSize(7.5).text(f.lpad('Cliente: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad(cliente ? cliente.nome : '', 87, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Formato após Revisão: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width1val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Peso após Revisão: ', width2, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width2val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Mts: ', width3, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width3val, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Formato após Laminação: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width1val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Peso após Laminação: ', width2, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width2val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Mts: ', width3, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width3val, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').text(f.lpad('Formato após 2ª Laminação: ', width1, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width1val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Peso após 2ª Laminação: ', width2, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width2val, padstr), { continued: true })
-                                    .font('Courier-Bold').text(f.lpad('Mts: ', width3, padstr), { continued: true })
-                                    .font('Courier').text(f.rpad('', width3val, padstr))
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('Tratamento', 15, padstr) +
-                                        f.lpad('Turno', 16, padstr) +
-                                        f.lpad('Nº da', 13, padstr) +
-                                        f.lpad('Operador', 14, padstr) +
-                                        f.lpad('Hora', 11, padstr) +
-                                        f.lpad('Hora', 13, padstr) +
-                                        f.lpad('Data', 10, padstr) +
-                                        f.lpad('Aprovado /', 15, padstr) +
-                                        f.lpad('Aprovado /', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold').fontSize(6.5)
-                                    .text(f.lpad('[ ]Interno [ ]Externo', 21, padstr), { continued: true })
-                                    .fontSize(7.5)
-                                    .text(
-                                        f.lpad('Máquina', 27, padstr) +
-                                        f.lpad('Inicial', 25, padstr) +
-                                        f.lpad('Final', 12, padstr) +
-                                        f.lpad('Reprovado', 24, padstr) +
-                                        f.lpad('Reprovado', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('Operador', 106, padstr) +
-                                        f.lpad('C/Q', 11, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                let str = '';
-                                if (approducaotempos.length > 0) {
-                                    let hora = application.formatters.fe.datetime(approducaotempos[0].dataini);
-                                    hora = hora.split(' ')[1].split(':');
-                                    let horaint = parseInt((hora[0] * 60)) + parseInt(hora[1]);
-                                    if (horaint >= 415 && horaint <= 915) {
-                                        str = '[x]A [ ]B [ ]C';
-                                    } else if (horaint >= 916 && horaint <= 1400) {
-                                        str = '[ ]A [x]B [ ]C';
-                                    } else {
-                                        str = '[ ]A [ ]B [x]C';
-                                    }
+                            }
+                            report.formato = formato.length > 0 ?
+                                etapa && etapa.codigo == 10 ? formato[0].largura + ' x ' + formato[0].espessura :
+                                    etapa && etapa.codigo == 20 ? formato[0].implargura + ' x ' + formato[0].impespessura :
+                                        etapa && (etapa.codigo == 30 || etapa.codigo == 35) ?
+                                            formato[0].larguralam + ' x ' + formato[0].espessuralam : ''
+                                : '';
+                            report.peso = approducaovolume ?
+                                'Bruto:' + application.formatters.fe.decimal(parseFloat(volume.qtdreal) + parseFloat(approducaovolume.tara), 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) :
+                                application.formatters.fe.decimal(volume.qtdreal, 2) + ' KG';
+                            report.metragem = application.formatters.fe.decimal(volume.metragem || 0, 4) + ' M'
+                            report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
+                            report.op = op ? op.codigo : '';
+                            report.opmae = opmae ? opmae.codigo : '';
+                            report.cliente = cliente ? cliente.nome : '';
+                            if (approducaotempos.length > 0) {
+                                let hora = application.formatters.fe.datetime(approducaotempos[0].dataini);
+                                hora = hora.split(' ')[1].split(':');
+                                let horaint = parseInt((hora[0] * 60)) + parseInt(hora[1]);
+                                if (horaint >= 415 && horaint <= 915) {
+                                    report.turno = 'A';
+                                } else if (horaint >= 916 && horaint <= 1400) {
+                                    report.turno = 'B';
                                 } else {
-                                    str = '[ ]A [ ]B [ ]C';
+                                    report.turno = 'C';
                                 }
+                            } else {
+                                report.turno = '';
+                            }
+                            let operador = volume['users.fullname'].split(' - ');
+                            report.operador = (operador.length == 2 ? operador[1] : operador[0]) || '';
+                            report.dataini = approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
+                            report.datafim = approducaotempos.length > 0 ? moment(approducaotempos[0].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
 
-                                // doc
-                                //     .font('Courier-Bold')
-                                //     .text(
-                                //     f.lpad('Extrusão:', 14, padstr) +
-                                //     f.lpad('[ ]A [ ]B [ ]C', 21, padstr) +
-                                //     f.lpad('[ ] A [ ] R', 72, padstr) +
-                                //     f.lpad('[ ] A [ ] R', 14, padstr)
-                                //     )
-                                //     .moveDown(md);
-
-                                let operador = volume['users.fullname'].split(' - ');
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('Extrusão:', 14, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 ? str : '[ ]A [ ]B [ ]C', 21, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 && oprecurso_recurso ? oprecurso_recurso.codigo : '', 8, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 ? '     ' + (operador.length == 2 ? operador[1] : operador[0]) : '', 16, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 10, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 13, padstr) +
-                                        f.lpad(etapa && [10].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY') : '', 13, padstr) +
-                                        f.lpad('[ ] A [ ] R', 12, padstr) +
-                                        f.lpad('[ ] A [ ] R', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('Impressão:', 14, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 ? str : '[ ]A [ ]B [ ]C', 21, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 && oprecurso_recurso ? oprecurso_recurso.codigo : '', 8, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 ? '     ' + (operador.length == 2 ? operador[1] : operador[0]) : '', 16, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 10, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 13, padstr) +
-                                        f.lpad(etapa && [20].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY') : '', 13, padstr) +
-                                        f.lpad('[ ] A [ ] R', 12, padstr) +
-                                        f.lpad('[ ] A [ ] R', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('Laminação:', 14, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 ? str : '[ ]A [ ]B [ ]C', 21, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 && oprecurso_recurso ? oprecurso_recurso.codigo : '', 8, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 ? '     ' + (operador.length == 2 ? operador[1] : operador[0]) : '', 16, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 10, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 13, padstr) +
-                                        f.lpad(etapa && [30].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY') : '', 13, padstr) +
-                                        f.lpad('[ ] A [ ] R', 12, padstr) +
-                                        f.lpad('[ ] A [ ] R', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        f.lpad('2ª Laminação:', 14, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 ? str : '[ ]A [ ]B [ ]C', 21, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 && oprecurso_recurso ? oprecurso_recurso.codigo : '', 8, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 ? '     ' + (operador.length == 2 ? operador[1] : operador[0]) : '', 16, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 10, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('HH:mm') : '', 13, padstr) +
-                                        f.lpad(etapa && [35].indexOf(etapa.codigo) >= 0 && approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY') : '', 13, padstr) +
-                                        f.lpad('[ ] A [ ] R', 12, padstr) +
-                                        f.lpad('[ ] A [ ] R', 14, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .moveTo(117, 169)
-                                    .lineTo(117, 260)
-                                    .stroke()
-                                    .moveTo(195, 169)
-                                    .lineTo(195, 260)
-                                    .stroke()
-                                    .moveTo(240, 130)
-                                    .lineTo(240, 260)
-                                    .stroke()
-                                    .moveTo(303, 169)
-                                    .lineTo(303, 260)
-                                    .stroke()
-                                    .moveTo(358, 169)
-                                    .lineTo(358, 260)
-                                    .stroke()
-                                    .moveTo(415, 169)
-                                    .lineTo(415, 260)
-                                    .stroke()
-                                    .moveTo(460, 130)
-                                    .lineTo(460, 260)
-                                    .stroke()
-                                    .moveTo(523, 169)
-                                    .lineTo(523, 260)
-                                    .stroke()
-                                    ;
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        'Visto do Encarregado:' +
-                                        f.lpad('Visto do C/Q:', 66, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text('Observações:')
-                                    .moveDown(md).text(sequenciaProducao && sequenciaProducao.length > 0 && sequenciaProducao[0]['seq'] > 0 ? (approducao ? `GRUPO ${approducao.id}  / ` : '') + ` SEQUENCIAL DO VOLUME: ${sequenciaProducao[0]['seq']}` : ' ')
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text(
-                                        'Fornecedor:' +
-                                        f.rpad(nfentrada ? nfentrada.razaosocial : '', 35, padstr) +
-                                        '  Código do Produto: ' +
-                                        f.rpad(versao.descricaocompleta, 55, padstr)
-                                    )
-                                    .moveDown(md);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text('Motivo da Reprovação:')
-                                    .moveDown(md).text(' ')
-                                    .moveDown(md);
-
-                                // Lines
-                                doc.y = 78;
-
-                                let nolines = [7, 8, 15];
-                                for (let z = 0; z < 20; z++) {
-                                    doc.y = doc.y + 13;
-                                    if (nolines.indexOf(z) < 0) {
-                                        doc
-                                            .moveTo(25, doc.y)
-                                            .lineTo(589, doc.y)
-                                            .stroke();
-                                    }
-                                }
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text('Observações do Volume:', 30, 342);
-
-                                str = [];
-                                if (approducaotempos.length > 0) {
-                                    let paradas = await db.sequelize.query(`
+                            report.observacao = sequenciaProducao && sequenciaProducao.length > 0 && sequenciaProducao[0]['seq'] > 0 ? (approducao ? `GRUPO ${approducao.id}  / ` : '') + ` SEQUENCIAL DO VOLUME: ${sequenciaProducao[0]['seq']}` : ' ';
+                            str = [];
+                            if (approducaotempos.length > 0) {
+                                let paradas = await db.sequelize.query(`
                                     (select	
                                         app.dataini
                                         , app.emenda
@@ -3058,155 +2782,28 @@ let main = {
                                         and datahora <= :datafim )
                                         
                                     order by dataini desc`,
-                                        {
-                                            type: db.Sequelize.QueryTypes.SELECT
-                                            , replacements: {
-                                                idoprecurso: approducao.idoprecurso
-                                                , dataini: approducaotempos[0].dataini
-                                                , datafim: approducaotempos[approducaotempos.length - 1].datafim
-                                            }
-                                        });
+                                    {
+                                        type: db.Sequelize.QueryTypes.SELECT
+                                        , replacements: {
+                                            idoprecurso: approducao.idoprecurso
+                                            , dataini: approducaotempos[0].dataini
+                                            , datafim: approducaotempos[approducaotempos.length - 1].datafim
+                                        }
+                                    });
 
-                                    for (let z = 0; z < paradas.length; z++) {
-                                        str.push('(' + (z + 1) + ') ' + (paradas[z].emenda ? 'EMENDA ' : '') + paradas[z].descricaocompleta + (paradas[z].observacao ? ' (' + paradas[z].observacao + ') ' : ''));
-                                    }
+                                for (let z = 0; z < paradas.length; z++) {
+                                    str.push('(' + (z + 1) + ') ' + (paradas[z].emenda ? 'EMENDA ' : '') + paradas[z].descricaocompleta + (paradas[z].observacao ? ' (' + paradas[z].observacao + ') ' : ''));
                                 }
-
-                                doc
-                                    .font('Courier')
-                                    .text(f.rpad(str.join(', ') + (' ' + (volume.observacao || '')), 700), 131, 342, { width: 450, height: 70, underline: true });
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text('ATENÇÃO: O ESTORNO DEVERÁ RETORNAR AO DEPÓSITO COM ESTA ETIQUETA', 227, 398);
-
-                                svgtopdfkit(
-                                    doc
-                                    , barcode('-10-' + f.lpad(volume.id, 9, '0'), 'code39', { width: 380, barHeight: 40, toFile: false })
-                                    , 230, 405
-                                );
-                                doc
-                                    .font('Courier')
-                                    .text('-10-' + f.lpad(volume.id, 9, '0'), 345, 438);
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .text('Data Inc.:', 530, 410, { width: 50 })
-                                    .font('Courier')
-                                    .text(application.formatters.fe.date(volume.datahora), 530, 420, { width: 50 });
-
-                                doc
-                                    .font('Courier-Bold')
-                                    .fontSize(9)
-                                    .text('1', 76, 355)
-                                    .text('2', 76, 363)
-                                    .text('3', 76, 371)
-                                    .text('4', 76, 379)
-                                    .text('5', 76, 387)
-                                    ;
-                                doc.circle(78, 398, 45)
-                                    .stroke()
-                                    .circle(78, 398, 5)
-                                    .stroke();
                             }
-
-                            // Part 2
-
-                            doc.moveTo(25, 460)
-                                .lineTo(589, 460) //top
-                                .lineTo(589, 623) //right
-                                .lineTo(25, 623) //bottom
-                                .lineTo(25, 460) //left
-                                .stroke()
-                                ;
-
-                            // Title
-                            if (fs.existsSync(`files/${process.env.NODE_APPNAME}/${image.id}.${image.type}`)) {
-                                doc.image(`files/${process.env.NODE_APPNAME}/${image.id}.${image.type}`, 35, 467, { width: 50 });
-                            }
-
-                            doc.moveTo(25, 510)
-                                .lineTo(589, 510) // Cabeçalho
-                                .stroke();
-
-                            doc
-                                .font('Courier-Bold')
-                                .fontSize(11)
-                                .text('IDENTIFICAÇÃO E STATUS DO VOLUME Nº ' + volume.id, 165, 480);
-
-                            width1 = 15;
-                            width1val = 107;
-
-                            doc
-                                .fontSize(7.5)
-                                .font('Courier-Bold').text(f.lpad('Fornecedor: ', width1, padstr), 30, 515, { continued: true })
-                                .font('Courier').text(f.rpad(nfentrada ? nfentrada.razaosocial : '', width1val, padstr))
-                                .moveDown(md);
-
-                            doc
-                                .font('Courier-Bold').text(f.lpad('Produto: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(versao ? versao.descricaocompleta : '', width1val, padstr))
-                                .moveDown(md);
-
-                            doc
-                                .font('Courier-Bold').text(f.lpad('Observação: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(application.functions.singleSpace(volume.observacao || ''), width1val, padstr))
-                                .moveDown(md);
-
-                            width1 = 15;
-                            width1val = 15;
-                            width2 = 25;
-                            width2val = 15;
-                            width3 = 25;
-                            width3val = 25;
-
-                            doc
-                                .font('Courier-Bold').text(f.lpad('Nota Fiscal: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(nfentrada ? nfentrada.documento : '', width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('Data Emi.: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(nfentrada ? application.formatters.fe.date(nfentrada.dataemissao) : '', width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('Data Inc.: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(application.formatters.fe.date(volume.datahora), width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('Data Validade: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(application.formatters.fe.date(volume.datavalidade), width1val, padstr))
-                                .moveDown(md);
-
-                            doc
-                                .font('Courier-Bold').text(f.lpad('Qtde: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(application.formatters.fe.decimal(volume.qtdreal, 4), width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('OC: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(nfentradaitem ? nfentradaitem.oc : '', width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('Vol.: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(volume.id, width1val, padstr), { continued: true })
-                                .font('Courier-Bold').text(f.lpad('Lote: ', width1, padstr), { continued: true })
-                                .font('Courier').text(f.rpad(volume.lote, width1val, padstr))
-                                .moveDown(md);
-
-                            doc.moveTo(25, 578)
-                                .lineTo(589, 578)
-                                .stroke();
-
-                            svgtopdfkit(
-                                doc
-                                , barcode('-10-' + f.lpad(volume.id, 9, '0'), 'code39', { width: 380, barHeight: 40, toFile: false })
-                                , 170, 582
-                            );
-                            doc
-                                .font('Courier')
-                                .text('-10-' + f.lpad(volume.id, 9, '0'), 285, 615);
-
-                            doc
-                                .font('Courier')
-                                .fontSize(120)
-                                .text(volume.id, 25, 630);
+                            report.observacoes = str.join(', ') + (' ' + (volume.observacao || ''));
+                            reportAll.push(report);
                         }
-
-                        doc.end();
-                        stream.on('finish', function () {
+                        let filename = await main.platform.report.f_generate('Etiqueta Volume', reportAll);
+                        if (filename) {
                             return application.success(obj.res, {
                                 openurl: '/download/' + filename
                             });
-                        });
+                        }
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -3791,6 +3388,13 @@ let main = {
                             let invalidfields = application.functions.getEmptyFields(obj.req.body, ['ids', 'iddeposito', 'datahora']);
                             if (invalidfields.length > 0) {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
+                            }
+
+                            let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
+                            for (let i = 0; i < volumes.length; i++) {
+                                if (volumes[i].iddeposito == obj.req.body.iddeposito) {
+                                    return application.error(obj.res, { msg: `O ID ${volumes[i].id} pertence ao mesmo depósito requisitado` });
+                                }
                             }
 
                             let ids = obj.req.body.ids.split(',');
