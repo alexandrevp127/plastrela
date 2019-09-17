@@ -7931,6 +7931,11 @@ let main = {
                         //     return application.error(obj.res, { msg: msg });
                         // }
 
+                        let opconjugadas = await db.getModel('pcp_opconjugada').findAll({ where: { idopprincipal: oprecurso.id } });
+                        for (let i = 0; i < opconjugadas.length; i++) {
+                            await db.getModel('pcp_oprecurso').update({ idestado: config.idestadoencerrada, integrado: 'P' }, { where: { id: opconjugadas[i].idopconjugada } });
+                        }
+
                         oprecurso.idestado = config.idestadoencerrada;
                         oprecurso.integrado = 'P';
                         await oprecurso.save({ iduser: obj.req.user.id });
@@ -9552,7 +9557,7 @@ let main = {
                             , qtd
                             , (select string_agg(mp.descricaocompleta || coalesce(' @ ' || app.observacao, ''), ', ') from pcp_apparada app left join pcp_motivoparada mp on (app.idmotivoparada = mp.id) where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as paradas
                             , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as qtdparadas
-                            , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max and app.trocaautomatica = true ) as qtdtrocaat
+                            , (case when trocaautomatica = true then 1 else 0 end ) as qtdtrocaat
                         from
                             (select
                                 v.id as idvolume
@@ -9562,6 +9567,7 @@ let main = {
                                 , op.codigo as op
                                 , (select min(dataini) from pcp_approducaotempo apt where apt.idapproducao = ap.id) as min
                                 , (select max(datafim) from pcp_approducaotempo apt where apt.idapproducao = ap.id) as max
+                                , apv.trocaautomatica
                             from
                                 pcp_oprecurso opr
                             left join pcp_opetapa ope on (opr.idopetapa = ope.id)
