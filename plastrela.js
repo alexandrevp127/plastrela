@@ -6896,7 +6896,6 @@ let main = {
                         , label: 'Qtd para Consumir'
                         , name: 'qtd'
                         , precision: '4'
-                        , disabled: 'disabled="disabled"'
                     });
 
                     body += '<div class="hidden">';
@@ -9427,7 +9426,6 @@ let main = {
                             left join pcp_versao ver on (op.idversao = ver.id)
                             inner join pcp_apinsumo api on (rec.id = api.idoprecurso)
                             where ver.id = :idversao
-                            and rec.idrecurso = :idrecurso
                             and rec.id != :idoprecurso
                             order by api.datahora desc
                             limit 1`
@@ -9436,7 +9434,6 @@ let main = {
                                 , replacements: {
                                     idversao: op.idversao
                                     , idoprecurso: oprecurso.id
-                                    , idrecurso: oprecurso.idrecurso
                                 }
                             }
                         );
@@ -9553,8 +9550,9 @@ let main = {
                             , idvolume 
                             , pesoliquido
                             , qtd
-                            , (select string_agg(mp.descricaocompleta, ', ') from pcp_apparada app left join pcp_motivoparada mp on (app.idmotivoparada = mp.id) where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as paradas
+                            , (select string_agg(mp.descricaocompleta || coalesce(' @ ' || app.observacao, ''), ', ') from pcp_apparada app left join pcp_motivoparada mp on (app.idmotivoparada = mp.id) where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as paradas
                             , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max ) as qtdparadas
+                            , (select count(*) from pcp_apparada app where app.idoprecurso = x.idoprecurso and app.dataini >= x.min and app.datafim <= x.max and app.trocaautomatica = true ) as qtdtrocaat
                         from
                             (select
                                 v.id as idvolume
@@ -9581,6 +9579,7 @@ let main = {
                         let qtd = 0;
                         let pesoliquido = 0;
                         let qtdparadas = 0;
+                        let qtdtrocaat = 0;
                         let report = {};
                         report.__title = obj.event.description;
                         report.__table = `
@@ -9592,6 +9591,7 @@ let main = {
                                 <td style="text-align:center;"><strong>Quantidade</strong></td>
                                 <td style="text-align:center;"><strong>Paradas</strong></td>
                                 <td style="text-align:center;"><strong>Qtd</strong></td>
+                                <td style="text-align:center;"><strong>Troca At.</strong></td>
                             </tr>
                         `;
                         for (let i = 0; i < sql.length; i++) {
@@ -9601,13 +9601,15 @@ let main = {
                                 <td style="text-align:center;"> ${sql[i]['idvolume'] || ''} </td>
                                 <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['pesoliquido'], 4)} </td>
                                 <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['qtd'], 3)} </td>
-                                <td style="text-align:center;"> ${sql[i]['paradas'] || ''} </td>
+                                <td style="text-align:center;"> ${(sql[i]['paradas'] || '') || ' ' || (sql[i]['observacao'] || '')} </td>
                                 <td style="text-align:center;"> ${sql[i]['qtdparadas']} </td>
+                                <td style="text-align:center;"> ${sql[i]['qtdtrocaat']} </td>
                             </tr>
                             `;
                             qtd += parseFloat(sql[i]['qtd']);
                             pesoliquido += parseFloat(sql[i]['pesoliquido']);
                             qtdparadas += parseInt(sql[i]['qtdparadas']);
+                            qtdtrocaat += parseInt(sql[i]['qtdtrocaat']);
                         }
                         report.__table += `
                             <tr>
@@ -9616,6 +9618,7 @@ let main = {
                                 <td style="text-align:right;"> ${application.formatters.fe.decimal(qtd, 3)} </td>
                                 <td style="text-align:right;"> </td>
                                 <td style="text-align:center;"> ${qtdparadas} </td>
+                                <td style="text-align:center;"> ${qtdtrocaat} </td>
                             </tr>
                         </table>
                         `;
