@@ -2694,7 +2694,7 @@ let main = {
                             report.datavalidade = application.formatters.fe.date(volume.datavalidade) || '__/__/____';
                             report.lote = volume.lote || '';
                             report.produto = versao ? versao.descricaocompleta : '';
-                            report.qtd = application.formatters.fe.decimal(volume.qtdreal, 4);
+                            report.qtd = approducaovolume ? application.formatters.fe.decimal(approducaovolume.qtd, 2) : application.formatters.fe.decimal(volume.qtdreal, 4);
                             report.obs = application.functions.singleSpace(volume.observacao || '');
                             report.fornecedor = nfentrada ? nfentrada.razaosocial : '';
                             report.nfdocumento = nfentrada ? nfentrada.documento : '';
@@ -2713,10 +2713,6 @@ let main = {
                                 displayValue: true
                             });
                             report.barcode = canvas.toDataURL();
-
-
-                            if (grupo && grupo.codigo != 533 && grupo.codigo != 502) {
-                            }
                             report.formato = formato.length > 0 ?
                                 etapa && etapa.codigo == 10 ? formato[0].largura + ' x ' + formato[0].espessura :
                                     etapa && etapa.codigo == 20 ? formato[0].implargura + ' x ' + formato[0].impespessura :
