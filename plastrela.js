@@ -3107,7 +3107,7 @@ let main = {
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
                                 let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volumes[i].pcp_versao.iditem } });
-                                if ( (item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15 ) {
+                                if ((item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
                                     await db.getModel('est_integracaotrf').create({
                                         query: `call p_transfere_estoque(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 'S', 7, 'N', null, null, 2, ${empresa})`
                                         , integrado: 'N'
@@ -8873,12 +8873,8 @@ let main = {
                         if (!obj.data.idoprecurso) {
                             return application.error(obj.res, { msg: 'OP Não informada' });
                         }
-
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
-                        let recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso.idrecurso } });
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
-                        let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
-
                         let sql = await db.sequelize.query(`
                         select
                             v.id
@@ -8894,40 +8890,35 @@ let main = {
                         left join est_deposito d on (v.iddeposito = d.id)
                         inner join est_volumereserva vr on (v.id = vr.idvolume)
                         where
-                            d.id = ${recurso.iddepositoprodutivo}
-                             and vr.idop = ${op.id}
+                            vr.idopetapa = ${opetapa.id}
                         order by 1
                         `, { type: db.Sequelize.QueryTypes.SELECT });
 
                         let body = `
                         <div class="col-md-12">
-                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
-                            <tr>
-                                <td style="text-align:center;"><strong>ID</strong></td>
-                                <td style="text-align:center;"><strong>Insumo</strong></td>
-                                <td style="text-align:center;"><strong>Qtd</strong></td>
-                                <td style="text-align:center;"><strong>Qtd para OP</strong></td>
-                                <td style="text-align:center;"><strong>Depósito</strong></td>
-                                <td style="text-align:center;"><strong>Consumido</strong></td>
-                            </tr>
+                            <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                                <tr>
+                                    <td style="text-align:center;"><strong>ID</strong></td>
+                                    <td style="text-align:center;"><strong>Insumo</strong></td>
+                                    <td style="text-align:center;"><strong>Qtd</strong></td>
+                                    <td style="text-align:center;"><strong>Qtd para OP</strong></td>
+                                    <td style="text-align:center;"><strong>Depósito</strong></td>
+                                    <td style="text-align:center;"><strong>Consumido</strong></td>
+                                </tr>
                         `;
                         for (let i = 0; i < sql.length; i++) {
                             body += `
-                            <tr>
-                                <td style="text-align:center;"> ${sql[i].id}   </td>
-                                <td style="text-align:left;">  ${sql[i].descricao}   </td>
-                                <td style="text-align:right;">  ${application.formatters.fe.decimal(sql[i].qtd, 4)}   </td>
-                                <td style="text-align:right;">  ${application.formatters.fe.decimal(sql[i].qtdreservada, 4)}   </td>
-                                <td style="text-align:center;">   ${sql[i].deposito}   </td>
-                                <td style="text-align:center;">   ${sql[i].consumido}   </td>
-                            </tr>
+                                <tr>
+                                    <td style="text-align:center;"> ${sql[i].id}   </td>
+                                    <td style="text-align:left;">  ${sql[i].descricao}   </td>
+                                    <td style="text-align:right;">  ${application.formatters.fe.decimal(sql[i].qtd, 4)}   </td>
+                                    <td style="text-align:right;">  ${application.formatters.fe.decimal(sql[i].qtdreservada, 4)}   </td>
+                                    <td style="text-align:center;">   ${sql[i].deposito}   </td>
+                                    <td style="text-align:center;">   ${sql[i].consumido}   </td>
+                                </tr>
                             `;
                         }
-                        body += `
-                        </table>
-                        </div>
-                        `;
-
+                        body += `</table></div>`;
                         return application.success(obj.res, {
                             modal: {
                                 id: 'modalevtg'
