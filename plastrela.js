@@ -1089,8 +1089,8 @@ let main = {
                                 if (j.username != email.to[i].address) {
                                     let participante = (await db.getModel('users').findOrCreate({ where: { email: email.to[i].address } }))[0];
                                     if (!participante.fullname) {
-                                        participante.fullname = email.to[i].name;
-                                        participante.save();
+                                        participante.fullname = email.to[i].name || email.to[i].address;
+                                        await participante.save();
                                     }
                                     await db.getModel('atv_atividadeparticipante').create({
                                         idatividade: atividade.id
@@ -1105,8 +1105,8 @@ let main = {
                                 if (j.username != email.cc[i].address) {
                                     let participante = (await db.getModel('users').findOrCreate({ where: { email: email.cc[i].address } }))[0];
                                     if (!participante.fullname) {
-                                        participante.fullname = email.cc[i].name;
-                                        participante.save();
+                                        participante.fullname = email.cc[i].name || email.cc[i].address;
+                                        await participante.save();
                                     }
                                     await db.getModel('atv_atividadeparticipante').create({
                                         idatividade: atividade.id
@@ -1144,7 +1144,7 @@ let main = {
                             if (files.length > 0) {
                                 atividade.anexo = JSON.stringify(files);
                             }
-                            atividade.save();
+                            await atividade.save();
                         }
                         if (user && user.email) {
                             main.platform.mail.f_sendmail({
@@ -2719,10 +2719,7 @@ let main = {
                                         etapa && (etapa.codigo == 30 || etapa.codigo == 35) ?
                                             formato[0].larguralam + ' x ' + formato[0].espessuralam : ''
                                 : '';
-                            report.peso = approducaovolume ?
-                                'Bruto:' + application.formatters.fe.decimal(parseFloat(volume.qtdreal) + parseFloat(approducaovolume.tara), 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) :
-                                application.formatters.fe.decimal(volume.qtdreal, 2) + ' KG';
-                            report.metragem = application.formatters.fe.decimal(volume.metragem || 0, 4) + ' M'
+                            report.peso = approducaovolume ? 'Bruto:' + application.formatters.fe.decimal(approducaovolume.pesobruto, 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(approducaovolume.pesoliquido, 2) : '';
                             report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
                             report.op = op ? op.codigo : '';
                             report.opmae = opmae ? opmae.codigo : '';
@@ -2744,7 +2741,7 @@ let main = {
                             let operador = volume['users.fullname'].split(' - ');
                             report.operador = (operador.length == 2 ? operador[1] : operador[0]) || '';
                             report.dataini = approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
-                            report.datafim = approducaotempos.length > 0 ? moment(approducaotempos[0].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
+                            report.datafim = approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
 
                             report.observacao = sequenciaProducao && sequenciaProducao.length > 0 && sequenciaProducao[0]['seq'] > 0 ? (approducao ? `GRUPO ${approducao.id}  / ` : '') + ` SEQUENCIAL DO VOLUME: ${sequenciaProducao[0]['seq']}` : ' ';
                             str = [];
