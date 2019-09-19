@@ -2719,7 +2719,7 @@ let main = {
                                         etapa && (etapa.codigo == 30 || etapa.codigo == 35) ?
                                             formato[0].larguralam + ' x ' + formato[0].espessuralam : ''
                                 : '';
-                            report.peso = approducaovolume ? 'Bruto:' + application.formatters.fe.decimal(approducaovolume.pesobruto, 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(approducaovolume.pesoliquido, 2) : '';
+                            report.peso = approducaovolume ? 'Bruto:' + application.formatters.fe.decimal(parseFloat(volume.qtdreal) + parseFloat(approducaovolume.tara), 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) : '';
                             report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
                             report.op = op ? op.codigo : '';
                             report.opmae = opmae ? opmae.codigo : '';
@@ -8902,7 +8902,7 @@ let main = {
                                     <td style="text-align:center;"><strong>Insumo</strong></td>
                                     <td style="text-align:center;"><strong>Qtd</strong></td>
                                     <td style="text-align:center;"><strong>Qtd para OP</strong></td>
-                                    <td style="text-align:center;"><strong>Depósito</strong></td>
+                                    <td style="text-align:center;"><strong>Depósito Atual</strong></td>
                                     <td style="text-align:center;"><strong>Consumido</strong></td>
                                 </tr>
                         `;
