@@ -19,11 +19,12 @@ let main = {
                     if (obj.register.id == 0) {
                         obj.register.datahora_criacao = moment();
                         obj.register.iduser_criacao = obj.req.user.id;
-                        let statusinicial = await db.getModel('atv_tipo_status').findOne({ where: { idtipo: obj.register.idtipo, inicial: true } });
+                        let statusinicial = await db.getModel('atv_tipo_status').findOne({ include: [{ all: true }], where: { idtipo: obj.register.idtipo, inicial: true } });
                         if (!statusinicial) {
                             return application.error(obj.res, { msg: 'Status Inicial não configurado para este tipo' });
                         }
                         obj.register.idstatus = statusinicial.idstatus;
+                        obj.register.iduser_responsavel = statusinicial.atv_tipo.iduserpadrao || null;
                     } else {
                         // Autenticar/Leitura
                         if (!obj.register.iduser_leitura) {
@@ -32,7 +33,7 @@ let main = {
                                 if (userauth) {
                                     let single = await db.getModel('atv_atividade').findOne({ where: { id: obj.register.id } });
                                     single.iduser_leitura = userauth.id;
-                                    single.save({ iduser: obj.req.user.id });
+                                    await single.save({ iduser: obj.req.user.id });
                                     return application.success(obj.res, { redirect: obj.req.path });
                                 } else {
                                     return application.error(obj.res, { msg: 'Usuário inválido' });
@@ -43,8 +44,6 @@ let main = {
                         if (obj.register.encerrada) {
                             return application.error(obj.res, { msg: 'Atividade está encerrada' });
                         }
-                        //mantém o tipo inicial e remove da auditoria
-                        obj.register.idtipo = obj.register._previousDataValues.idtipo; delete obj.register._changed.idtipo;
 
                         //Usuário é do setor responsável
                         if (!await db.getModel('cad_setorusuario').findOne({ where: { idsetor: obj.register.atv_tipo.idsetor, idusuario: obj.req.user.id } })) {
@@ -1064,7 +1063,7 @@ let main = {
                     }
                 } else { // Novo
                     let tipo = await db.getModel('atv_tipo').findOne({ where: { descricaocompleta: 'TI - Geral' } });
-                    let status_inicial = await db.getModel('atv_tipo_status').findOne({ where: { idtipo: tipo.id, inicial: true } });
+                    let status_inicial = await db.getModel('atv_tipo_status').findOne({ include: [{ all: true }], where: { idtipo: tipo.id, inicial: true } });
                     let user = (await db.getModel('users').findOrCreate({ where: { email: email.from[0].address } }))[0];
                     if (!user.fullname) {
                         user.fullname = email.from[0].name;
@@ -1079,6 +1078,7 @@ let main = {
                             , idstatus: status_inicial.idstatus
                             , datahora_criacao: moment()
                             , encerrada: false
+                            , iduser_responsavel: status_inicial.atv_tipo.iduserpadrao || null
                         });
                         let html = atividade.descricao || '';
                         // Participantes
@@ -2253,10 +2253,8 @@ let main = {
                 if (obj.req.method == 'GET') {
                     let config = await db.getModel('config').findOne();
                     let empresa = config.cnpj == "90816133000123" ? 2 : 1;
-                    main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync_sped/Job.kjb`);
-
+                    await main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync_sped/Job.kjb`);
                     let body = '';
-
                     body += application.components.html.autocomplete({
                         width: '12'
                         , label: 'Depósito'
@@ -2269,7 +2267,6 @@ let main = {
                         , label: 'Chave de Acesso'
                         , name: 'chave'
                     });
-
                     return application.success(obj.res, {
                         modal: {
                             form: true
@@ -7824,7 +7821,7 @@ let main = {
                             if (!apcliche) {
                                 return application.error(obj.res, { msg: 'Não é possível encerrar uma OP de Impressão sem clichês montados' });
                             }
-                            let montagens = await db.getModel('pcp_apclichemontagem').findAll({ where: { idapcliche: apcliche.id }, order: [['estacao', 'asc']] });
+                            let montagens = await db.getModel('pcp_apclichemontagem').findAll({ where: { idapcliche: apcliche ? apcliche.id : 0 }, order: [['estacao', 'asc']] });
                             if (montagens.length <= 0) {
                                 return application.error(obj.res, { msg: 'Não é possível encerrar uma OP de Impressão sem clichês montados' });
                             }

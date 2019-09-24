@@ -152,7 +152,7 @@
 
         var $idtipo = $('select[name="idtipo"]');
         var $iduserresponsavel = $('select[name="iduser_responsavel"]');
-        
+
         if (application.functions.getId() == 0) {
             // $('#divcabecalho').addClass('hidden');
             $('#tabdetalhes').addClass('hidden');
@@ -162,8 +162,6 @@
 
             // $('body').append(createModal());
             // $('#creatingModal').modal({ backdrop: 'static', keyboard: false }, 'show');
-        } else {
-            $('select[name="idtipo"]').prop('disabled', true);
         }
 
         function adjustAC() {
