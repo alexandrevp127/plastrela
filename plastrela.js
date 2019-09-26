@@ -9982,7 +9982,7 @@ let main = {
                                 data.sobra.qtd += parseFloat(sql[i].qtd);
                             }
 
-                            if (obj.req.body.parada == 'true' && obj.req.body.producao == 'true') {
+                            if (obj.data.parada == 'true' && obj.data.producao == 'true') {
                                 if (sql[i].tipo == 'producao' || sql[i].tipo == 'parada') {
                                     if (wdata == null) {
                                         wdata = moment(sql[i].datafim, application.formatters.be.datetime_format);
