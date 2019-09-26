@@ -1206,7 +1206,54 @@ let main = {
             main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync/Job.kjb`);
         }
         , schedule: {
-            integracaoApontamentos: async function () {
+            s_estoqueMinimo: async function () {
+                try {
+                    let param = await main.platform.parameter.f_get('est_estoqueminimo_notificacao');
+                    if (param) {
+                        let sql = await db.sequelize.query(`
+                        select
+                            x.*
+                            , v.descricaocompleta as produto
+                            , d.descricao as deposito
+                        from
+                            (select
+                                em.*
+                                , coalesce((select sum(v.qtdreal) from est_volume v where v.consumido = false and v.iddeposito = em.iddeposito and v.idversao = em.idversao),0) as qtdestoque
+                            from
+                                est_estoqueminimo em) as x
+                        left join pcp_versao v on (x.idversao = v.id)
+                        left join est_deposito d on (x.iddeposito = d.id)
+                        where
+                            qtdestoque <= quantidade`, { type: { type: db.Sequelize.QueryTypes.SELECT } });
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <tr>
+                                <td style="text-align:center;"><strong>Depósito</strong></td>
+                                <td style="text-align:center;"><strong>Produto</strong></td>
+                                <td style="text-align:center;"><strong>Quantidade Mínima</strong></td>
+                                <td style="text-align:center;"><strong>Quantidade Atual</strong></td>
+                            </tr>`;
+                        for (let i = 0; i < sql.length; i++) {
+                            body += `
+                            <tr>
+                                <td style="text-align:left;"> ${sql[i].deposito} </td>
+                                <td style="text-align:left;"> ${sql[i].produto} </td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i].quantidade, 4)} </td>
+                                <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i].qtdestoque, 4)} </td>
+                            </tr>`;
+                        }
+                        body += `</table></div>`;
+                        main.platform.mail.f_sendmail({
+                            to: param
+                            , subject: 'SIP - Estoque Mínimo'
+                            , html: body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , integracaoApontamentos: async function () {
                 let config = await db.getModel('config').findOne();
                 let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                 main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_integracaoap/Job.kjb`);
@@ -3099,7 +3146,7 @@ let main = {
                             let changes = { iddeposito: obj.req.body.iddeposito, iddepositoendereco: null };
                             let depdestino = await db.getModel('est_deposito').findOne({ where: { id: obj.req.body.iddeposito } });
                             let volumes = await db.getModel('est_volume').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
-                            await db.getModel('est_volume').update(changes, { transaction: t, where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
+                            await db.getModel('est_volume').update(changes, { transaction: t, where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } }, iduser: obj.req.user.id });
                             let config = await db.getModel('config').findOne();
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
@@ -5198,6 +5245,7 @@ let main = {
                                             idestado: config.idestadointerrompida
                                         }, { where: { id: { [db.Op.in]: ids } } });
                                     }
+                                    resolve();
                                 });
                             });
                         });
@@ -5237,6 +5285,31 @@ let main = {
                                 });
                             }
                         });
+                }
+                , f_verificaPreApontamento: async (idoprecurso) => {
+                    try {
+                        let config = await db.getModel('pcp_config').findOne();
+                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: idoprecurso } });
+                        if (oprecurso.idestado == config.idestadoencerrada) {
+                            return { success: false, msg: 'Não é possível realizar apontamentos de OP encerrada' };
+                        }
+                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
+                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
+                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
+                            return { success: false, msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] };
+                        }
+                        let recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso.idrecurso || 0 } });
+                        if (recurso && recurso.nropinterrompida != null) {
+                            let interrompidas = await db.getModel('pcp_oprecurso').findAll({ where: { id: { [db.Op.ne]: idoprecurso }, idrecurso: recurso.id, idestado: { [db.Op.or]: [config.idestadointerrompida, config.idestadoproducao] } } });
+                            if (interrompidas.length > recurso.nropinterrompida) {
+                                return { success: false, msg: `Numero máximo de OPs interrompidas atingido (${recurso.nropinterrompida}) para o recurso ${recurso.codigo} - ${recurso.descricao}` };
+                            }
+                        }
+                        return { success: true };
+                    } catch (err) {
+                        console.error(err);
+                        return { success: false, msg: 'Algo deu errado' };
+                    }
                 }
             }
             , apclichemontagem: {
@@ -5882,20 +5955,15 @@ let main = {
             , approducaotempo: {
                 onsave: async function (obj, next) {
                     try {
-                        let config = await db.getModel('pcp_config').findOne();
                         let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: obj.register.idapproducao } })
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: approducao.idoprecurso } });
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos de OP encerrada' });
-                        }
-                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
-                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
-                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
-                            return application.error(obj.res, { msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] });
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(approducao.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
                         }
                         if (!obj.register.dataini || !obj.register.datafim) {
                             return application.error(obj.res, { msg: 'Informe as datas corretamente', invalidfields: ['dataini', 'datafim'] });
                         }
+                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: approducao.idoprecurso } });
                         let dataini = moment(obj.register.dataini);
                         let datafim = moment(obj.register.datafim);
                         let duracao = datafim.diff(dataini, 'm');
@@ -5948,9 +6016,9 @@ let main = {
                         if (results.length > 0) {
                             return application.error(obj.res, { msg: 'Existe um apontamento de ' + results[0].tipo + ' neste horário' });
                         }
-                        main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
                         let saved = await next(obj);
                         if (saved.success) {
+                            main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
                             approducao.integrado = false;
                             approducao.save({ iduser: obj.req.user.id });
                         }
@@ -5994,19 +6062,13 @@ let main = {
             , approducaovolume: {
                 onsave: async function (obj, next) {
                     try {
-
-                        let config = await db.getModel('pcp_config').findOne();
                         let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: obj.register.idapproducao } });
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(approducao.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
+                        }
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: approducao.idoprecurso } });
                         let user = await db.getModel('users').findOne({ where: { id: obj.register.iduser } });
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos de OP encerrada' });
-                        }
-                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
-                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
-                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
-                            return application.error(obj.res, { msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] });
-                        }
                         if (user && !user.code) {
                             return application.error(obj.res, { msg: 'Usuário/Operador Inválido', invalidfields: ['iduser'] });
                         }
@@ -6016,29 +6078,23 @@ let main = {
                         if (obj.register.pesobruto <= 0) {
                             return application.error(obj.res, { msg: 'O peso deve ser maior que 0', invalidfields: ['pesobruto'] });
                         }
-
                         let volume = await db.getModel('est_volume').findOne({
                             where: { idapproducaovolume: obj.register.id }
                         });
                         if (volume && (parseFloat(volume.qtd) != parseFloat(volume.qtdreal))) {
                             return application.error(obj.res, { msg: 'Não é possível modificar um volume já utilizado' });
                         }
-
                         obj.register.pesoliquido = (obj.register.pesobruto - obj.register.tara).toFixed(4);
-
                         let opr = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idopreferente || oprecurso.id } });
-
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: opr.idopetapa } });
                         let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
                         let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa.idtprecurso } });
                         let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
-
                         if (tprecurso.codigo == 3) {
                             let curaacelerada = await main.plastrela.pcp.oprecurso.f_testeCuraAcelerada(oprecurso.id);
                             if (curaacelerada && !curaacelerada.data)
                                 return application.error(obj.res, { msg: 'Não é possível apontar uma volume com o teste de cura acelerada não realizado' });
                         }
-
                         // Reserva
                         let sql = [];
                         if (tprecurso.codigo == 8) {
@@ -6145,20 +6201,16 @@ let main = {
                                 order by ope.seq
                                 `,
                                 { type: db.Sequelize.QueryTypes.SELECT });
-
                             if (sql.length > 0 && sql[0].iddeposito) {
                             } else {
                                 return application.error(obj.res, { msg: 'Depósito não configurado' });
                             }
                         }
-
                         let saved = await next(obj);
-
                         if (saved.success) {
                             approducao.integrado = false;
                             approducao.save({ iduser: obj.req.user.id });
                             main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
-
                             let qtd = saved.register.qtd;
                             let metragem = null;
                             if ([1, 2, 3, 5, 8].indexOf(tprecurso.codigo) >= 0) {
@@ -6217,18 +6269,15 @@ let main = {
                 }
                 , ondelete: async function (obj, next) {
                     try {
-
-                        let config = await db.getModel('pcp_config').findOne();
                         let volumes = await db.getModel('est_volume').findAll({ where: { idapproducaovolume: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
                         let approducaovolumes = await db.getModel('pcp_approducaovolume').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
-
                         for (let i = 0; i < volumes.length; i++) {
-                            let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: volumes[i].pcp_approducaovolume.idapproducao }, include: [{ all: true }] })
-                            if (approducao.pcp_oprecurso.idestado == config.idestadoencerrada) {
-                                return application.error(obj.res, { msg: 'Não é possível apagar apontamentos de OP encerrada' });
+                            let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: volumes[i].pcp_approducaovolume.idapproducao } })
+                            const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(approducao.idoprecurso);
+                            if (!preap.success) {
+                                return application.error(obj.res, { msg: preap.msg });
                             }
                         }
-
                         for (let i = 0; i < volumes.length; i++) {
                             if (volumes[i].consumido) {
                                 return application.error(obj.res, { msg: 'O volume ' + volumes[i].id + ' se encontra consumido, verifique' });
@@ -6236,7 +6285,6 @@ let main = {
                                 return application.error(obj.res, { msg: 'O volume ' + volumes[i].id + ' se encontra parcialmente consumido, verifique' });
                             }
                         }
-
                         let deleted = await next(obj);
                         if (deleted.success) {
                             for (let i = 0; i < volumes.length; i++) {
@@ -6592,35 +6640,17 @@ let main = {
                 onsave: async function (obj, next) {
                     try {
                         obj.register.integrado = false;
-                        let config = await db.getModel('pcp_config').findOne();
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idoprecurso } });
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos em OP encerrada' });
-                        }
-                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
-                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
-                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
-                            return application.error(obj.res, { msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] });
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(obj.register.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
                         }
                         if (obj.register.peso <= 0) {
                             return application.error(obj.res, { msg: 'O peso deve ser maior que 0', invalidfields: ['peso'] });
                         }
-                        let tipoperda = await db.getModel('pcp_tipoperda').findOne({ where: { id: obj.register.idtipoperda } });
-
-                        if (tipoperda && [300, 322].indexOf(tipoperda.codigo) >= 0) {
-                            return next(obj);
+                        let saved = await next(obj);
+                        if (saved.success) {
+                            main.plastrela.pcp.ap.f_corrigeEstadoOps(obj.register.idoprecurso);
                         }
-                        let qtdapinsumo = parseFloat((await db.sequelize.query('select sum(qtd) as sum from pcp_apinsumo where idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        let qtdapperda = parseFloat((await db.sequelize.query('select sum(app.peso) as sum from pcp_apperda app left join pcp_tipoperda tp on (app.idtipoperda = tp.id) where tp.codigo not in (300, 322) and app.id != ' + obj.register.id + ' and app.idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        let qtdapproducaovolume = parseFloat((await db.sequelize.query('select sum(apv.pesoliquido) as sum from pcp_approducaovolume apv left join pcp_approducao ap on (apv.idapproducao = ap.id) where ap.idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-
-                        if ((qtdapinsumo * 1.15) - (qtdapperda + qtdapproducaovolume + parseFloat(obj.register.peso)) < 0) {
-                            // return application.error(obj.res, { msg: 'Insumos insuficientes para realizar este apontamento' });
-                        }
-
-                        main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
-                        await next(obj);
-
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -6659,12 +6689,11 @@ let main = {
                         if (invalidfields.length > 0) {
                             return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                         }
-
-                        let config = await db.getModel('pcp_config').findOne();
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idoprecurso } });
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos em OP encerrada' });
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(obj.register.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
                         }
+                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idoprecurso } });
                         let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
                         if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
                             let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
@@ -6775,9 +6804,9 @@ let main = {
                             }
                         }
 
-                        main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
                         let saved = await next(obj);
                         if (saved.success) {
+                            main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
                             db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: saved.register.idoprecurso } });
                         }
 
@@ -7012,6 +7041,10 @@ let main = {
                         if (invalidfields.length > 0) {
                             return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                         }
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(obj.data.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
+                        }
 
                         if (apontamento_running) {
                             return setTimeout(main.plastrela.pcp.apinsumo.__apontarVolume.bind(null, obj), 250);
@@ -7019,7 +7052,6 @@ let main = {
                         apontamento_running = true;
 
                         let user = await db.getModel('users').findOne({ where: { id: obj.data.iduser } });
-                        let config = await db.getModel('pcp_config').findOne();
                         let gconfig = await db.getModel('config').findOne();
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
                         if (!oprecurso) {
@@ -7057,14 +7089,6 @@ let main = {
 
                         if (deposito && deposito.descricao == 'Almoxarifado') {
                             return application.error(obj.res, { msg: 'Não é possível consumir volumes que estão no almoxarifado' });
-                        }
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos em OP encerrada' });
-                        }
-                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
-                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
-                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
-                            return application.error(obj.res, { msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] });
                         }
                         if (qtd <= 0) {
                             return application.error(obj.res, { msg: 'A quantidade apontada deve ser maior que 0', invalidfields: ['qtd'] });
@@ -7145,7 +7169,6 @@ let main = {
                                 , idsubstituto: obj.data.idsubstituto || null
                             });
                         }
-                        main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
 
                         await volume.save({ iduser: obj.req.user.id });
 
@@ -7157,7 +7180,6 @@ let main = {
                         }
 
                         let param = await main.platform.parameter.f_get('pcp_validacaoInsumoReserva_' + etapa.pcp_tprecurso.codigo);
-
                         if (vrop) {
                             application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         } else if (!vrop && param) {
@@ -7170,7 +7192,7 @@ let main = {
                         } else {
                             application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
-
+                        main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
                     } catch (err) {
                         application.fatal(obj.res, err);
                     } finally {
@@ -7356,22 +7378,14 @@ let main = {
             , apsobra: {
                 onsave: async function (obj, next) {
                     try {
-
                         if (obj.register.id > 0) {
                             return application.error(obj.res, { msg: 'Não é possível editar uma sobra, apague o registro e aponte novamente' });
                         }
+                        const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(obj.register.idoprecurso);
+                        if (!preap.success) {
+                            return application.error(obj.res, { msg: preap.msg });
+                        }
                         obj.register.datahora = moment();
-
-                        let config = await db.getModel('pcp_config').findOne();
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idoprecurso } });
-                        if (oprecurso.idestado == config.idestadoencerrada) {
-                            return application.error(obj.res, { msg: 'Não é possível realizar apontamentos em OP encerrada' });
-                        }
-                        let opconjugada = await db.getModel('pcp_opconjugada').findOne({ where: { idopconjugada: oprecurso.id } });
-                        if (opconjugada && opconjugada.idopprincipal != oprecurso.id) {
-                            let opr = await main.platform.model.findAll('pcp_oprecurso', { where: { id: opconjugada.idopprincipal } });
-                            return application.error(obj.res, { msg: 'OP Conjugada. Só é possível realizar apontamentos na OP principal ' + opr.rows[0]['op'] });
-                        }
 
                         if (parseFloat(obj.register.qtd) <= 0) {
                             return application.error(obj.res, { msg: 'A quantidade apontada deve ser maior que 0', invalidfields: ['qtd'] });
@@ -7394,14 +7408,6 @@ let main = {
                         if (parseFloat(apinsumo.qtd) < 0) {
                             return application.error(obj.res, { msg: 'Não é possível sobrar mais do que o componente' });
                         }
-
-                        // Valida Pesos
-                        // let qtdapinsumo = parseFloat((await db.sequelize.query('select sum(qtd) as sum from pcp_apinsumo where id != ' + obj.register.idapinsumo + ' and idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        // let qtdapperda = parseFloat((await db.sequelize.query('select sum(app.peso) as sum from pcp_apperda app left join pcp_tipoperda tp on (app.idtipoperda = tp.id) where tp.codigo not in (300, 322) and app.idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        // let qtdapproducaovolume = parseFloat((await db.sequelize.query('select sum(apv.pesoliquido) as sum from pcp_approducaovolume apv left join pcp_approducao ap on (apv.idapproducao = ap.id) where ap.idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        // if (((qtdapinsumo + parseFloat(apinsumo.qtd) - parseFloat(obj.register.qtd)) * 1.15) - (qtdapperda + qtdapproducaovolume) < 0) {
-                        //     return application.error(obj.res, { msg: 'Insumos insuficientes para realizar este apontamento' });
-                        // }
 
                         let saved = await next(obj);
                         if (saved.success) {
