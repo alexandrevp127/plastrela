@@ -3932,6 +3932,14 @@ let main = {
                             });
                             body += application.components.html.autocomplete({
                                 width: '12'
+                                , label: 'Tipo de Item'
+                                , name: 'idtpitem'
+                                , model: 'est_tpitem'
+                                , query: `codigo || ' - ' || descricao`
+                                , multiple: 'multiple="multiple"'
+                            });
+                            body += application.components.html.autocomplete({
+                                width: '12'
                                 , label: 'Grupo'
                                 , name: 'idgrupo'
                                 , model: 'est_grupo'
@@ -3946,15 +3954,6 @@ let main = {
                                 , query: `(select g.codigo from est_grupo g where g.id = est_subgrupo.idgrupo) || '/' || codigo ||  ' - ' || descricao`
                                 , multiple: 'multiple="multiple"'
                             });
-                            body += application.components.html.autocomplete({
-                                width: '12'
-                                , label: 'Produto'
-                                , name: 'idversao'
-                                , model: 'pcp_versao'
-                                , attribute: `descricaocompleta`
-                                , multiple: 'multiple="multiple"'
-                            });
-
                             body += application.components.html.radio({
                                 width: '12'
                                 , label: 'Ordem'
@@ -3962,7 +3961,6 @@ let main = {
                                 , value: 'Grupo/Subgrupo'
                                 , options: ['Grupo/Subgrupo', 'Código']
                             });
-
                             return application.success(obj.res, {
                                 modal: {
                                     form: true
@@ -3986,8 +3984,8 @@ let main = {
                             if (obj.req.body.idsubgrupo) {
                                 where.push(`sg.id in (${obj.req.body.idsubgrupo})`);
                             }
-                            if (obj.req.body.idversao) {
-                                where.push(`v.id in (${obj.req.body.idversao})`);
+                            if (obj.req.body.idtpitem) {
+                                where.push(`i.idtpitem in (${obj.req.body.idtpitem})`);
                             }
                             let sql = await db.sequelize.query(`
                                 select * from (select
@@ -4011,7 +4009,7 @@ let main = {
                                 union all
 
                                 select * from (select
-                                    'Total' as grupo
+                                    '<strong>Total</strong>' as grupo
                                     , ''::text
                                     , ''::text
                                     , sum(vol.qtdreal) as qtd
