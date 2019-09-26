@@ -1225,6 +1225,8 @@ let main = {
                         left join est_deposito d on (x.iddeposito = d.id)
                         where
                             qtdestoque <= quantidade`, { type: { type: db.Sequelize.QueryTypes.SELECT } });
+                        if (sql.length <= 0)
+                            return;
                         let body = `
                         <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
                             <tr>
