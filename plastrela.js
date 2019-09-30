@@ -1761,6 +1761,56 @@ let main = {
                     console.error(err);
                 }
             }
+            , s_inventario: async () => {
+                try {
+                    let sql = await db.sequelize.query(`
+                    select
+                        d.descricao as deposito
+                        , v.descricaocompleta
+                        , sum(vol.qtdreal) as qtd
+                    from
+                        est_volume vol
+                    left join est_deposito d on (vol.iddeposito = d.id)
+                    left join pcp_versao v on (vol.idversao = v.id)
+                    left join cad_item i on (v.iditem = i.id)
+                    where
+                        vol.consumido = false
+                        and d.codigo in (6,7,8,9,10,11)
+                    group by 1,2
+                    order by 1,2
+                    `, { type: db.sequelize.QueryTypes.SELECT });
+
+                    let report = {};
+                    report.__title = `Inventário Geral`;
+                    report.__table = `
+                    <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                        <tr>
+                            <td style="text-align:center;"><strong>Depósito</strong></td>
+                            <td style="text-align:center;"><strong>Produto</strong></td>
+                            <td style="text-align:center;"><strong>Quantidade</strong></td>
+                        </tr>
+                    `;
+                    for (let i = 0; i < sql.length; i++) {
+                        report.__table += `
+                        <tr>
+                            <td style="text-align:left;"> ${sql[i]['deposito']} </td>
+                            <td style="text-align:left;"> ${sql[i]['descricaocompleta']} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(sql[i]['qtd'], 4)} </td>
+                        </tr>
+                        `;
+                    }
+                    report.__table += `</table>`;
+                    let filename = await main.platform.report.f_generate('Geral - Listagem', report);
+                    return main.platform.mail.f_sendmail({
+                        to: ['williamb@plastrela.com.br', 'informatica@plastrela.com.br']
+                        , subject: `Inventário`
+                        , html: `Segue em anexo.`
+                        , attachments: [{ path: `${__dirname}/../../tmp/${process.env.NODE_APPNAME}/${filename}` }]
+                    })
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
         , adm: {
             viagem: {
