@@ -8,7 +8,7 @@ const application = require('../../routes/application')
     ;
 
 let atv_schedules = [];
-let apontamento_running = true;
+let apontamento_running = 0;
 
 let main = {
     platform: require('../platform.js')
@@ -6151,8 +6151,8 @@ let main = {
                             if (!obj.register.idopetapa)
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idopetapa'] });
                             let revopetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: obj.register.idopetapa } });
-                            let revetapa = await db.getModel('pcp_etapa').findOne({ where: { id: revopetapa.idetapa } });
-                            sql.push({ idopetapa: revopetapa.id, iddeposito: revetapa.iddeposito });
+                            let revdep = await db.getModel('est_deposito').findOne({ where: { codigo: 8 } });
+                            sql.push({ idopetapa: revopetapa.id, iddeposito: revdep.id });
                         } else {
                             sql = await db.sequelize.query([1].indexOf(tprecurso.codigo) >= 0 ?
                                 `with et as (
@@ -6492,7 +6492,7 @@ let main = {
                             if (tprecurso.codigo == 8) {
                                 return application.error(obj.res, { msg: `Não é possível gerar volumes para revisora, aponte-os manualmente` });
                             } else {
-                                sql = await db.sequelize.query([1].indexOf(tprecurso.codigo) >= 0 ?
+                                sql = await db.sequelize.query([1, 7].indexOf(tprecurso.codigo) >= 0 ?
                                     `with et as (
                                     select distinct
                                         d.id as iddeposito
@@ -6671,16 +6671,16 @@ let main = {
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-
                         let volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
-
                         let needle = require('needle');
-                        let req = await needle('get', 'http://172.10.30.111:8082/write/' + volume.id);
-                        if (req) {
-                            return application.success(obj.res, { msg: application.message.success, reloadtables: true });
-                        } else {
-                            return application.error(obj.res, { msg: 'algo deu errado' });
+                        while (true) {
+                            await needle('get', 'http://172.10.30.33:8082/write/' + volume.id);
+                            let volid = parseInt((await needle('get', 'http://172.10.30.33:8082/read')).body);
+                            if (volid == volume.id) {
+                                break;
+                            }
                         }
+                        return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -7096,10 +7096,11 @@ let main = {
                             return application.error(obj.res, { msg: preap.msg });
                         }
 
-                        if (apontamento_running) {
-                            return setTimeout(main.plastrela.pcp.apinsumo.__apontarVolume.bind(null, obj), 250);
+                        if (apontamento_running > 0) {
+                            apontamento_running++;
+                            return setTimeout(main.plastrela.pcp.apinsumo.__apontarVolume.bind(null, obj), apontamento_running * 1000);
                         }
-                        apontamento_running = true;
+                        apontamento_running++;
 
                         let user = await db.getModel('users').findOne({ where: { id: obj.data.iduser } });
                         let gconfig = await db.getModel('config').findOne();
@@ -7110,8 +7111,8 @@ let main = {
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         let etapa = await db.getModel('pcp_etapa').findOne({ include: [{ all: true }], where: { id: opetapa.idetapa } });
                         let op = await db.getModel('pcp_op').findOne({ include: [{ all: true }], where: { id: opetapa.idop } });
-                        let recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso.idrecurso } });
-                        let volume = await db.getModel('est_volume').findOne({ where: { id: obj.data.idvolume } });
+                        let recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
+                        let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: obj.data.idvolume } });
                         let vrop = await db.getModel('est_volumereserva').findOne({ where: { idvolume: volume.id, idopetapa: opetapa.id } });
                         let versao = await db.getModel('pcp_versao').findOne({ where: { id: volume.idversao } });
                         let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
@@ -7184,8 +7185,14 @@ let main = {
                             }
                         }
 
-                        if (volume.iddeposito != recurso.iddepositoprodutivo && !recurso.permitirApontarDeposito) {
-                            return application.error(obj.res, { msg: `Não é possível apontar volumes de outro depósito` });
+                        if (volume.iddeposito != recurso.iddepositoprodutivo) {
+                            if (!recurso.permitirApontarDeposito)
+                                return application.error(obj.res, { msg: `Não é possível apontar volumes de outro depósito` });
+                            let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
+                            await db.getModel('est_integracaotrf').create({
+                                query: `call p_transfere_estoque(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 'S', 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
+                                , integrado: 'N'
+                            }, { iduser: obj.req.user.id });
                         }
                         volume.iddeposito = recurso.iddepositoprodutivo;
                         volume.iddepositoendereco = null;
@@ -7246,7 +7253,7 @@ let main = {
                     } catch (err) {
                         application.fatal(obj.res, err);
                     } finally {
-                        apontamento_running = false;
+                        apontamento_running = 0;
                     }
                 }
                 , ondelete: async function (obj, next) {
@@ -8103,9 +8110,9 @@ let main = {
                                 opr.id = :v1) as x
                       `, { type: db.sequelize.QueryTypes.SELECT, replacements: { v1: obj.data.idoprecurso } });
                         if (sql.length > 0 && sql[0].efetiva) {
-                            return application.success(obj.res, { efetiva: application.formatters.fe.decimal(sql[0].efetiva, 2) });
+                            return application.success(obj.res, { efetiva: application.formatters.fe.decimal(sql[0].efetiva, 3) });
                         } else {
-                            return application.success(obj.res, { efetiva: '0,00' });
+                            return application.success(obj.res, { efetiva: '0,000' });
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -10988,8 +10995,8 @@ let main = {
                                     <td style="text-align:center;"><strong>UN</strong></td>
                                     <td style="text-align:center;"><strong>Qtd Entrega</strong></td>
                                     <td style="text-align:center;"><strong>Qtd Atendido</strong></td>
-                                    <td style="text-align:center;"><strong>Qtd Est. OP</strong></td>
                                     <td style="text-align:center;"><strong>Qtd Est. Item</strong></td>
+                                    <td style="text-align:center;"><strong>Qtd Est. OP</strong></td>
                                     <td style="text-align:center;"><strong>Qtd Prod. OP</strong></td>
                                     <td style="text-align:center;"><strong>Cidade - UF</strong></td>
                                     <td style="text-align:center;"><strong>Representante</strong></td>
@@ -11007,8 +11014,8 @@ let main = {
                                 <td style="text-align:left;"> ${embarques.rows[i]['unidade']} </td>
                                 <td style="text-align:right;"> ${embarques.rows[i]['qtdentrega']} </td>
                                 <td style="text-align:right;"> ${embarques.rows[i]['qtdatendido']} </td>
-                                <td style="text-align:right;"> ${embarques.rows[i]['qtdestoque'] || ''} </td>
                                 <td style="text-align:right;"> ${embarques.rows[i]['qtdestoquetotal'] || ''} </td>
+                                <td style="text-align:right;"> ${embarques.rows[i]['qtdestoque'] || ''} </td>
                                 <td style="text-align:right;"> ${embarques.rows[i]['qtdproduzido'] || ''} </td>
                                 <td style="text-align:left;"> ${embarques.rows[i]['cidade'] + ' - ' + embarques.rows[i]['uf']} </td>
                                 <td style="text-align:left;"> ${embarques.rows[i]['representante'].substring(0, 20)} </td>

@@ -55,7 +55,6 @@ $(function () {
             });
         }
 
-        var aux = 0;
         var tabletocount = [
             'viewapontamento_de_producao_-_insumo'
             , 'viewapontamento_de_producao_-_producao'
@@ -63,23 +62,6 @@ $(function () {
             , 'viewapontamento_de_producao_-_parada'
         ]
         $(document).on('app-datatable', function (e, table) {
-
-            if (tabletocount.indexOf(table) >= 0) {
-                aux++;
-            }
-            if (aux == 4) {
-                for (var i = 0; i < tabletocount.length; i++) {
-                    if (tables[tabletocount[i]].rows().count() == 0) {
-                        aux--;
-                    }
-                }
-                if (aux == 0) {
-                    // application.functions.confirmMessage('Favor verificar se o recurso informado na OP está correto.', function () {
-                    // });
-                    // frnc();
-                }
-            }
-
             switch (table) {
                 case 'viewapontamento_de_producao_-_insumo':// Insumo
                     tables[table].button($('.btn-success')).action(addinsumo);
@@ -92,7 +74,6 @@ $(function () {
                     });
                     break;
             }
-
         });
         $(document).on('app-datatable-reload', function (e, table) {
             if (tabletocount.indexOf(table) >= 0) {
