@@ -7189,10 +7189,12 @@ let main = {
                             if (!recurso.permitirApontarDeposito)
                                 return application.error(obj.res, { msg: `Não é possível apontar volumes de outro depósito` });
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
-                            await db.getModel('est_integracaotrf').create({
-                                query: `call p_transfere_estoque(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 'S', 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
-                                , integrado: 'N'
-                            }, { iduser: obj.req.user.id });
+                            if (item.est_tpitem.codigo != 1) {
+                                await db.getModel('est_integracaotrf').create({
+                                    query: `call p_transfere_estoque(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 'S', 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
+                                    , integrado: 'N'
+                                }, { iduser: obj.req.user.id });
+                            }
                         }
                         volume.iddeposito = recurso.iddepositoprodutivo;
                         volume.iddepositoendereco = null;
