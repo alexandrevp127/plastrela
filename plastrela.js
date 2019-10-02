@@ -5340,6 +5340,9 @@ let main = {
                     try {
                         let config = await db.getModel('pcp_config').findOne();
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: idoprecurso } });
+                        if (!oprecurso) {
+                            return { success: false, msg: 'Favor sair e entrar novamente na OP correta' };
+                        }
                         if (oprecurso.idestado == config.idestadoencerrada) {
                             return { success: false, msg: 'Não é possível realizar apontamentos de OP encerrada' };
                         }
