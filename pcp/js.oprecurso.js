@@ -1,5 +1,7 @@
 $(function () {
-
+    var intervalBalanca = null;
+    var totalNaoVinculado = 0;
+    var rfidurl = 'http://172.10.30.115:8081';
     if (application.isRegisterview) {
 
         var $idrecurso = $('select[name="idrecurso"]');
@@ -44,13 +46,28 @@ $(function () {
         }
 
         //Adicionar Insumo
+        function psF(value, precision) {
+            return parseFloat(value).toFixed(precision).replace('.', ',').replace(new RegExp('\\d(?=(\\d{3})+\\D)', 'g'), '$&.');
+        }
         function addinsumo() {
-            application.jsfunction('plastrela.pcp.apinsumo.__adicionarModal', { etapa: $('input[name="etapa"]').val() }, function (response) {
+            application.jsfunction('plastrela.pcp.apinsumo.__adicionarModal', { idoprecurso: application.functions.getId(), etapa: $('input[name="etapa"]').val() }, function (response) {
                 application.handlers.responseSuccess(response);
+                totalNaoVinculado = response.totalNaoVinculado;
                 if ($('input[name="etapa"]').val() == 70) {
-                    $.get('http://localhost:8082/read', function (data) {
+                    $.get(rfidurl + '/read', function (data) {
                         buscaCodigoBarra('-10-' + data);
                     });
+                    intervalBalanca = setInterval(function () {
+                        $.ajax({
+                            url: 'http://172.10.30.115:8082'
+                            , type: 'GET'
+                            , dataType: 'json'
+                            , success: function (response) {
+                                $('input[name="qtd"').val(psF(response.weight - totalNaoVinculado, 2));
+                                $('input[name="qtd"').focus();
+                            }
+                        });
+                    }, 750);
                 }
             });
         }
@@ -106,6 +123,10 @@ $(function () {
                     });
                     $modal.on('shown.bs.modal', function () {
                         $modal.find('input[name="codigodebarra"]').focus();
+                    });
+                    $modal.on('hidden.bs.modal', function () {
+                        clearInterval(intervalBalanca);
+                        $.get(rfidurl + '/cancel');
                     });
                     $modal.find('input[name="codigodebarra"]').keydown(function (e) {
                         if (e.keyCode == 13) {

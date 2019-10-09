@@ -1924,7 +1924,7 @@ let main = {
                         }
                         let count = await db.getModel('cad_vinculacaolicenca').count({ where: { idlicenca: licenca.id, id: { [db.Op.ne]: obj.register.id } } });
                         if (count >= licenca.qtd) {
-                            // return application.error(obj.res, { msg: 'Esta licença excedeu o número de vinculações' });
+                            return application.error(obj.res, { msg: 'Esta licença excedeu o número de vinculações' });
                         }
                         await next(obj);
                     } catch (err) {
@@ -6491,6 +6491,24 @@ let main = {
                             let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa.idtprecurso } });
                             let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
 
+                            if (tprecurso.codigo == 7) {
+                                let sql = await db.sequelize.query(`
+                                select
+                                    v.*
+                                from
+                                    pcp_oprecurso opr
+                                left join pcp_approducao app on (opr.id = app.idoprecurso)
+                                left join pcp_approducaovolume apv on (app.id = apv.idapproducao)
+                                left join est_volume v on (apv.id = v.idapproducaovolume)
+                                where
+                                    opr.id = ${oprecurso.id}
+                                    and v.consumido = false
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                                if (sql.length > 0) {
+                                    return application.error(obj.res, { msg: 'Não é possível produzir uma nova tinta sem ter consumido as anteriores' });
+                                }
+                            }
+
                             let sql = [];
                             if (tprecurso.codigo == 8) {
                                 return application.error(obj.res, { msg: `Não é possível gerar volumes para revisora, aponte-os manualmente` });
@@ -6677,8 +6695,8 @@ let main = {
                         let volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
                         let needle = require('needle');
                         while (true) {
-                            await needle('get', 'http://172.10.30.33:8082/write/' + volume.id);
-                            let volid = parseInt((await needle('get', 'http://172.10.30.33:8082/read')).body);
+                            await needle('get', 'http://172.10.30.115:8081/write/' + volume.id);
+                            let volid = parseInt((await needle('get', 'http://172.10.30.115:8081/read')).body);
                             if (volid == volume.id) {
                                 break;
                             }
@@ -6902,7 +6920,7 @@ let main = {
                 }
             }
             , apinsumo: {
-                __adicionarModal: function (obj) {
+                __adicionarModal: async function (obj) {
 
                     let body = '';
 
@@ -6992,6 +7010,7 @@ let main = {
                             , body: body
                             , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button id="apontar" type="button" class="btn btn-primary">Apontar</button>'
                         }
+                        , totalNaoVinculado: await db.getModel('pcp_apinsumo').sum('qtd', { where: { idoprecurso: obj.data.idoprecurso, recipiente: null } })
                     });
                 }
                 , __pegarVolume: async function (obj) {
