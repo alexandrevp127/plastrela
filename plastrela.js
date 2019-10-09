@@ -1120,25 +1120,27 @@ let main = {
                             let files = [];
                             let modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividade' } });
                             for (let i = 0; i < email.attachments.length; i++) {
-                                let type = email.attachments[i].fileName.split('.');
-                                type = type[type.length - 1];
-                                let file = await db.getModel('file').create({
-                                    filename: email.attachments[i].fileName
-                                    , size: email.attachments[i].length
-                                    , bounded: true
-                                    , mimetype: email.attachments[i].contentType
-                                    , type: type
-                                    , datetime: moment()
-                                    , modelid: atividade.id
-                                    , iduser: user ? user.id : null
-                                    , idmodel: modelatv.id
-                                });
-                                let attach = email.attachments[i];
-                                fs.writeFile(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${file.id}.${type}`, attach.content, function (err) { });
-                                if (html.indexOf('cid:' + email.attachments[i].contentId) < 0) {
-                                    files.push(file);
+                                if (email.attachments[i].fileName) {
+                                    let type = email.attachments[i].fileName.split('.');
+                                    type = type[type.length - 1];
+                                    let file = await db.getModel('file').create({
+                                        filename: email.attachments[i].fileName
+                                        , size: email.attachments[i].length
+                                        , bounded: true
+                                        , mimetype: email.attachments[i].contentType
+                                        , type: type
+                                        , datetime: moment()
+                                        , modelid: atividade.id
+                                        , iduser: user ? user.id : null
+                                        , idmodel: modelatv.id
+                                    });
+                                    let attach = email.attachments[i];
+                                    fs.writeFile(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${file.id}.${type}`, attach.content, function (err) { });
+                                    if (html.indexOf('cid:' + email.attachments[i].contentId) < 0) {
+                                        files.push(file);
+                                    }
+                                    html = html.replace('cid:' + email.attachments[i].contentId, `/file/${file.id}`);
                                 }
-                                html = html.replace('cid:' + email.attachments[i].contentId, `/file/${file.id}`);
                             }
                             atividade.descricao = html;
                             if (files.length > 0) {
@@ -2790,7 +2792,7 @@ let main = {
                             report.datavalidade = application.formatters.fe.date(volume.datavalidade) || '__/__/____';
                             report.lote = volume.lote || '';
                             report.produto = versao ? versao.descricaocompleta : '';
-                            if ([2, 504, 537, 543].indexOf(grupo.codigo) >= 0 && !approducaovolume) {
+                            if (grupo && [2, 504, 537, 543].indexOf(grupo.codigo) >= 0 && !approducaovolume) {
                                 report.peso = volume.qtdreal ? ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) : '';
                                 report.qtd = volume.metragem ? application.formatters.fe.decimal((volume.qtdreal * volume.metragem) / volume.qtd, 2) : '';
                             } else {
