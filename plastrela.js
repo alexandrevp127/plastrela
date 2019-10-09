@@ -2794,7 +2794,7 @@ let main = {
                                 report.peso = volume.qtdreal ? ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) : '';
                                 report.qtd = volume.metragem ? application.formatters.fe.decimal((volume.qtdreal * volume.metragem) / volume.qtd, 2) : '';
                             } else {
-                                report.qtd = approducaovolume ? application.formatters.fe.decimal(approducaovolume.qtd, 2) : application.formatters.fe.decimal(volume.qtdreal, 4);
+                                report.qtd = approducaovolume ? application.formatters.fe.decimal((volume.qtdreal * approducaovolume.qtd) / volume.qtd, 2) : application.formatters.fe.decimal(volume.qtdreal, 4);
                                 report.peso = approducaovolume ? 'Bruto:' + application.formatters.fe.decimal(parseFloat(volume.qtdreal) + parseFloat(approducaovolume.tara), 2) + ' Tara:' + application.formatters.fe.decimal(approducaovolume.tara, 2) + ' Líq:' + application.formatters.fe.decimal(volume.qtdreal, 2) : '';
                             }
                             report.obs = application.functions.singleSpace(volume.observacao || '');
