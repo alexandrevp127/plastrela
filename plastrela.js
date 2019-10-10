@@ -7323,7 +7323,8 @@ let main = {
                             // }
 
                             volume.qtdreal = (parseFloat(volume.qtdreal) + parseFloat(apinsumo.qtd)).toFixed(4);
-                            volume.consumido = false;
+                            if (volume.qtdreal > 0)
+                                volume.consumido = false;
                             volumes.push(volume);
                             volumesreservas = volumesreservas.concat(volumereservas);
                         }
@@ -9500,17 +9501,20 @@ let main = {
                         }
 
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso ? oprecurso.idopetapa : 0 } });
+                        let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa ? opetapa.idetapa : 0 } });
                         let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa ? opetapa.idop : 0 } });
 
                         let ultimaObservacao = await db.sequelize.query(`
                             select rec.observacao
                             from pcp_oprecurso rec
                             left join pcp_opetapa eta on (rec.idopetapa = eta.id)
+                            left join pcp_etapa e on (eta.idetapa = e.id)
                             left join pcp_op op on (eta.idop = op.id)
                             left join pcp_versao ver on (op.idversao = ver.id)
                             inner join pcp_apinsumo api on (rec.id = api.idoprecurso)
                             where ver.id = :idversao
                             and rec.id != :idoprecurso
+                            and e.idtprecurso = :idtprecurso
                             order by api.datahora desc
                             limit 1`
                             , {
@@ -9518,6 +9522,7 @@ let main = {
                                 , replacements: {
                                     idversao: op.idversao
                                     , idoprecurso: oprecurso.id
+                                    , idtprecurso: etapa ? etapa.idtprecurso : 0
                                 }
                             }
                         );
