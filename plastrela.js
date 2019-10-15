@@ -10544,7 +10544,7 @@ let main = {
                                 <td style="text-align:right;"> ${sql[i]['qtd']} </td>
                             </tr>
                             `;
-                            qtd++;
+                            qtd += parseInt(sql[i]['qtd']);
                         }
                         report.__table += `
                             <tr>
