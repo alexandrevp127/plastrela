@@ -6929,6 +6929,11 @@ let main = {
             , apinsumo: {
                 __adicionarModal: async function (obj) {
 
+                    let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
+                    let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso ? oprecurso.idopetapa : 0 } });
+                    let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa ? opetapa.idetapa : 0 } });
+                    let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa ? etapa.idtprecurso : 0 } });
+
                     let body = '';
 
                     body += application.components.html.autocomplete({
@@ -6997,6 +7002,7 @@ let main = {
                         , label: 'Qtd para Consumir'
                         , name: 'qtd'
                         , precision: '4'
+                        , disabled: [1].indexOf(tprecurso.codigo) >= 0 ? '' : 'readonly="readonly"'
                     });
 
                     body += '<div class="hidden">';
