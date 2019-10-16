@@ -7665,6 +7665,10 @@ let main = {
                                 return application.error(obj.res, { msg: `Os % não fecham 100% (${perc}%)` });
                             }
                         }
+                        obj._responseModifier = function (ret) {
+                            ret.historyBack = false;
+                            return ret;
+                        };
                         await next(obj);
                     } catch (err) {
                         return application.fatal(obj.res, err);
