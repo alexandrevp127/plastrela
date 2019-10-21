@@ -645,7 +645,7 @@ let main = {
                         return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                     }
                     let atividadeag = await db.getModel('atv_atividadeag').findOne({ where: { id: obj.ids[0] } });
-                    if (atividadeag.ativo) {
+                    if (atividadeag && atividadeag.ativo) {
                         return application.error(obj.res, { msg: 'Não é possível excluir agendamentos ativos' });
                     }
                     await next(obj);
@@ -5249,7 +5249,7 @@ let main = {
                                 idrecurso = :v1
                             `
                             , {
-                                replacements: { v1: oprecurso.idrecurso }
+                                replacements: { v1: oprecurso ? oprecurso.idrecurso : 0 }
                                 , type: db.sequelize.QueryTypes.SELECT
                             });
                         if (results[0].max) {
@@ -8703,25 +8703,31 @@ let main = {
                         let body = '';
                         body += application.components.html.hidden({ name: 'name', value: 'plastrela.pcp.oprecurso.js_chamarColorista' });
                         body += application.components.html.hidden({ name: 'idoprecurso', value: obj.data.idoprecurso });
-                        body += application.components.html.radio({
-                            width: '12'
-                            , label: 'Motivo'
-                            , name: 'motivo'
-                            , options: [
-                                'Fazer secagem'
-                                , 'Ajuste de cor'
-                                , 'Acerto de cor'
-                                , 'Reposição'
-                                , 'Reposição (Branco)'
-                                , 'Reposição (Amarelo)'
-                                , 'Reposição (Magenta)'
-                                , 'Reposição (Cyan)'
-                                , 'Reposição (Preto)'
-                                , 'Reposição (Verniz)'
-                                , 'Pré-Setup próximo pedido'
-                                , 'Colorista comparecer na máquina'
-                            ]
-                        });
+                        let opts = [
+                            { name: 'fazer_secagem', description: 'Fazer secagem' }
+                            , { name: 'ajuste_cor', description: 'Ajuste de cor' }
+                            , { name: 'acerto_cor', description: 'Acerto de cor' }
+                            , { name: 'reposicao', description: 'Reposição' }
+                            , { name: 'reposicao_branco', description: 'Reposição (Branco)' }
+                            , { name: 'reposicao_verniz', description: 'Reposição (Verniz)' }
+                            , { name: 'reposicao_amarelo', description: 'Reposição (Cromia)' }
+                            , { name: 'reposicao_magenta', description: 'Reposição (Pantone)' }
+                            , { name: 'presetup', description: 'Pré-Setup próximo pedido' }
+                            , { name: 'comparecer', description: 'Colorista comparecer na máquina' }
+                        ];
+                        for (let i = 0; i < opts.length; i++) {
+                            body += application.components.html.checkbox({
+                                width: '6'
+                                , label: opts[i].description
+                                , name: opts[i].name
+                            });
+                            body += application.components.html.text({
+                                width: '6'
+                                , label: `Obs. ${opts[i].description}`
+                                , name: `${opts[i].name}_text`
+                            });
+                        }
+
                         return application.success(obj.res, {
                             modal: {
                                 form: true
@@ -8738,13 +8744,36 @@ let main = {
                 }
                 , js_chamarColorista: async (obj) => {
                     try {
+                        let opts = [
+                            { name: 'fazer_secagem', description: 'Fazer secagem' }
+                            , { name: 'ajuste_cor', description: 'Ajuste de cor' }
+                            , { name: 'acerto_cor', description: 'Acerto de cor' }
+                            , { name: 'reposicao', description: 'Reposição' }
+                            , { name: 'reposicao_branco', description: 'Reposição (Branco)' }
+                            , { name: 'reposicao_verniz', description: 'Reposição (Verniz)' }
+                            , { name: 'reposicao_amarelo', description: 'Reposição (Cromia)' }
+                            , { name: 'reposicao_magenta', description: 'Reposição (Pantone)' }
+                            , { name: 'presetup', description: 'Pré-Setup próximo pedido' }
+                            , { name: 'comparecer', description: 'Colorista comparecer na máquina' }
+                        ];
+
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.req.body.idoprecurso } });
                         let recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso.idrecurso } });
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
+
+                        let description = [];
+
+                        for (let i = 0; i < opts.length; i++) {
+                            if (obj.req.body[opts[i].name] == 'true') {
+                                let text = obj.req.body[opts[i].name + '_text']
+                                description.push(opts[i].description + (text ? ` (${text})` : ''));
+                            }
+                        }
+
                         main.platform.notification.create([2744], {
                             title: obj.req.body.motivo
-                            , description: recurso.codigo + ' / ' + op.codigo
+                            , description: recurso.codigo + ' / ' + op.codigo + ' / ' + description.join(' / ')
                         });
                         return application.success(obj.res, { msg: application.message.success });
                     } catch (err) {
