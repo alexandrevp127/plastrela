@@ -8707,7 +8707,6 @@ let main = {
                             { name: 'fazer_secagem', description: 'Fazer secagem' }
                             , { name: 'ajuste_cor', description: 'Ajuste de cor' }
                             , { name: 'acerto_cor', description: 'Acerto de cor' }
-                            , { name: 'reposicao', description: 'Reposição' }
                             , { name: 'reposicao_branco', description: 'Reposição (Branco)' }
                             , { name: 'reposicao_verniz', description: 'Reposição (Verniz)' }
                             , { name: 'reposicao_amarelo', description: 'Reposição (Cromia)' }
@@ -8748,7 +8747,6 @@ let main = {
                             { name: 'fazer_secagem', description: 'Fazer secagem' }
                             , { name: 'ajuste_cor', description: 'Ajuste de cor' }
                             , { name: 'acerto_cor', description: 'Acerto de cor' }
-                            , { name: 'reposicao', description: 'Reposição' }
                             , { name: 'reposicao_branco', description: 'Reposição (Branco)' }
                             , { name: 'reposicao_verniz', description: 'Reposição (Verniz)' }
                             , { name: 'reposicao_amarelo', description: 'Reposição (Cromia)' }
