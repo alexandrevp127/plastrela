@@ -3212,7 +3212,7 @@ let main = {
                                 let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volumes[i].pcp_versao.iditem } });
                                 if ((item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
                                     await db.getModel('est_integracaotrf').create({
-                                        query: `call p_transfere_estoque(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 7, 'N', null, null, 2, ${empresa})`
+                                        query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 7, 'N', null, null, 2, ${empresa})`
                                         , integrado: 'N'
                                     }, { iduser: obj.req.user.id, transaction: t });
                                 }
@@ -4596,7 +4596,7 @@ let main = {
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
                             if (item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
-                                    query: `call p_transfere_estoque(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${requisicoes[i].est_deposito.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
+                                    query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${requisicoes[i].est_deposito.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
                                     , integrado: 'N'
                                 }, { iduser: obj.req.user.id, transaction: t });
                             }
@@ -4658,7 +4658,7 @@ let main = {
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
                             if (item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
-                                    query: `call p_transfere_estoque(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${requisicoes[i].est_deposito.codigo}, ${requisicoes[i].depositoorigem.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
+                                    query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${requisicoes[i].est_deposito.codigo}, ${requisicoes[i].depositoorigem.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
                                     , integrado: 'N'
                                 }, { iduser: obj.req.user.id, transaction: t });
                             }
@@ -7226,7 +7226,7 @@ let main = {
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
                             if ([2, 5].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
-                                    query: `call p_transfere_estoque(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
+                                    query: `call p_transfere_estoque_integ(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
                                     , integrado: 'N'
                                 }, { iduser: obj.req.user.id });
                             }
