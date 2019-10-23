@@ -1735,7 +1735,7 @@ let main = {
                         `;
                         return main.platform.mail.f_sendmail({
                             to: ['informatica@plastrela.com.br']
-                            , subject: 'SIP - Conferência Transferência Itens'
+                            , subject: 'SIP-NF Transferência - Item não é do tipo 13.'
                             , html: body
                         });
                     }
