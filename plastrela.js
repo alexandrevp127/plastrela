@@ -75,7 +75,7 @@ let main = {
                             }
                         }
 
-                        if (!obj.req.body._calendar){
+                        if (!obj.req.body._calendar) {
                             for (let i = 0; i < cds.length; i++) {
                                 let atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
                                 if (!atvcd) {
