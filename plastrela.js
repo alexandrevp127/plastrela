@@ -75,30 +75,32 @@ let main = {
                             }
                         }
 
-                        for (let i = 0; i < cds.length; i++) {
-                            let atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
-                            if (!atvcd) {
-                                await db.getModel('atv_atividade_cd').create({ idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id });
-                                atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
-                            }
-                            if (obj.req.body['cd' + cds[i].idcampodinamico]) {
-                                switch (atvcd.atv_campodinamico.tipo) {
-                                    case 'Data':
-                                        atvcd.valor = application.formatters.be.date(obj.req.body['cd' + cds[i].idcampodinamico]);
-                                        break;
-                                    case 'Data/Hora':
-                                        atvcd.valor = application.formatters.be.datetime(obj.req.body['cd' + cds[i].idcampodinamico]);
-                                        break;
-                                    case 'Decimal':
-                                        atvcd.valor = application.formatters.be.decimal(obj.req.body['cd' + cds[i].idcampodinamico]);
-                                        break;
-                                    default:
-                                        atvcd.valor = obj.req.body['cd' + cds[i].idcampodinamico];
-                                        break;
+                        if (!obj.req.body._calendar){
+                            for (let i = 0; i < cds.length; i++) {
+                                let atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
+                                if (!atvcd) {
+                                    await db.getModel('atv_atividade_cd').create({ idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id });
+                                    atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
                                 }
-                                await atvcd.save({ iduser: obj.req.user.id });
-                            } else {
-                                await atvcd.destroy({ iduser: obj.req.user.id });
+                                if (obj.req.body['cd' + cds[i].idcampodinamico]) {
+                                    switch (atvcd.atv_campodinamico.tipo) {
+                                        case 'Data':
+                                            atvcd.valor = application.formatters.be.date(obj.req.body['cd' + cds[i].idcampodinamico]);
+                                            break;
+                                        case 'Data/Hora':
+                                            atvcd.valor = application.formatters.be.datetime(obj.req.body['cd' + cds[i].idcampodinamico]);
+                                            break;
+                                        case 'Decimal':
+                                            atvcd.valor = application.formatters.be.decimal(obj.req.body['cd' + cds[i].idcampodinamico]);
+                                            break;
+                                        default:
+                                            atvcd.valor = obj.req.body['cd' + cds[i].idcampodinamico];
+                                            break;
+                                    }
+                                    await atvcd.save({ iduser: obj.req.user.id });
+                                } else {
+                                    await atvcd.destroy({ iduser: obj.req.user.id });
+                                }
                             }
                         }
                     }
@@ -502,27 +504,27 @@ let main = {
                     let horashoje = await db.sequelize.query(`
                     select sum(tempo) as sum from atv_atividadenota where iduser = ${obj.req.user.id} and datahora >= :dataini and datahora <= :datafim
                     `, {
-                            type: db.Sequelize.QueryTypes.SELECT, replacements: {
-                                dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
-                                , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
-                            }
-                        });
+                        type: db.Sequelize.QueryTypes.SELECT, replacements: {
+                            dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
+                            , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
+                        }
+                    });
                     let tarefaandamento = await db.sequelize.query(`
                        select idatividade from atv_atividadetempo where iduser = ${obj.req.user.id} and datahorafim is null
                            `, {
-                            type: db.Sequelize.QueryTypes.SELECT, replacements: {
-                                dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
-                                , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
-                            }
-                        });
+                        type: db.Sequelize.QueryTypes.SELECT, replacements: {
+                            dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
+                            , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
+                        }
+                    });
                     let tempomedioresolucao = await db.sequelize.query(`
                     select avg(EXTRACT(EPOCH FROM (datahora_termino - datahora_criacao))/60) as sum from atv_atividade where iduser_responsavel = ${obj.req.user.id} and encerrada = true and datahora_criacao >= now() - interval '15 days'
                         `, {
-                            type: db.Sequelize.QueryTypes.SELECT, replacements: {
-                                dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
-                                , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
-                            }
-                        });
+                        type: db.Sequelize.QueryTypes.SELECT, replacements: {
+                            dataini: moment().startOf('day').format(application.formatters.be.datetime_format)
+                            , datafim: moment().endOf('day').format(application.formatters.be.datetime_format)
+                        }
+                    });
 
 
                     let ret = {
@@ -2767,9 +2769,9 @@ let main = {
                             left join est_tpitem tp on (i.idtpitem = tp.id)
                             where vol.id = :v1
                             `, {
-                                    type: db.sequelize.QueryTypes.SELECT
-                                    , replacements: { v1: volume.id }
-                                });
+                                type: db.sequelize.QueryTypes.SELECT
+                                , replacements: { v1: volume.id }
+                            });
 
                             let sequenciaProducao = await db.sequelize.query(`
                             select
@@ -2784,9 +2786,9 @@ let main = {
                             where
                                 v.id = :v1
                             `, {
-                                    type: db.sequelize.QueryTypes.SELECT
-                                    , replacements: { v1: volume.id }
-                                });
+                                type: db.sequelize.QueryTypes.SELECT
+                                , replacements: { v1: volume.id }
+                            });
                             report.id = volume.id;
                             report.datainclusao = application.formatters.fe.date(volume.datahora);
                             report.datavalidade = application.formatters.fe.date(volume.datavalidade) || '__/__/____';
@@ -3092,10 +3094,10 @@ let main = {
                             await db.getModel('file').update({
                                 bounded: false
                             }, {
-                                    where: {
-                                        id: { [db.Op.in]: filestounbound }
-                                    }
-                                });
+                                where: {
+                                    id: { [db.Op.in]: filestounbound }
+                                }
+                            });
                         }
 
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
@@ -3557,12 +3559,12 @@ let main = {
                                     and d.codigo in ${deps}
                                     and v.id not in (select vb.idvolume from est_volumebalanco vb where vb.iddeposito = :v1 and vb.iduser = :v2)
                                 `, {
-                                        type: db.sequelize.QueryTypes.SELECT
-                                        , replacements: {
-                                            v1: obj.data.iddeposito
-                                            , v2: obj.req.user.id
-                                        }
-                                    });
+                                    type: db.sequelize.QueryTypes.SELECT
+                                    , replacements: {
+                                        v1: obj.data.iddeposito
+                                        , v2: obj.req.user.id
+                                    }
+                                });
 
                                 let found = await db.sequelize.query(`
                                 select
@@ -3583,12 +3585,12 @@ let main = {
                                     and vb.iddeposito = :v1
                                     and vb.iduser = :v2                                    
                                 `, {
-                                        type: db.sequelize.QueryTypes.SELECT
-                                        , replacements: {
-                                            v1: obj.data.iddeposito
-                                            , v2: obj.req.user.id
-                                        }
-                                    });
+                                    type: db.sequelize.QueryTypes.SELECT
+                                    , replacements: {
+                                        v1: obj.data.iddeposito
+                                        , v2: obj.req.user.id
+                                    }
+                                });
 
                                 return application.success(obj.res
                                     , {
@@ -3658,11 +3660,11 @@ let main = {
                                         v.id in (:v1)  
                                     order by 1                               
                                     `, {
-                                            type: db.sequelize.QueryTypes.SELECT
-                                            , replacements: {
-                                                v1: obj.data.idsfound || 0
-                                            }
-                                        });
+                                        type: db.sequelize.QueryTypes.SELECT
+                                        , replacements: {
+                                            v1: obj.data.idsfound || 0
+                                        }
+                                    });
 
                                     let count = registers.length;
                                     if (registers.length <= 0) {
@@ -3727,11 +3729,11 @@ let main = {
                                         and d.codigo in ${deps}
                                     order by 1                             
                                     `, {
-                                            type: db.sequelize.QueryTypes.SELECT
-                                            , replacements: {
-                                                v1: obj.data.idsfound || 0
-                                            }
-                                        });
+                                        type: db.sequelize.QueryTypes.SELECT
+                                        , replacements: {
+                                            v1: obj.data.idsfound || 0
+                                        }
+                                    });
 
                                     let count2 = registers.length;
                                     if (registers.length <= 0) {
@@ -4083,9 +4085,9 @@ let main = {
                                 group by 1,2
                                 order by 1,2) as x
                             `, {
-                                    type: db.sequelize.QueryTypes.SELECT
-                                    , replacements: { iddeposito: obj.req.body.iddeposito }
-                                });
+                                type: db.sequelize.QueryTypes.SELECT
+                                , replacements: { iddeposito: obj.req.body.iddeposito }
+                            });
 
                             let report = {};
                             report.__title = `Inventário ${deposito.descricao}`;
@@ -4228,8 +4230,8 @@ let main = {
                             where
                                 i.idvolume = ${volumes[i].id}
                             order by 1`, {
-                                    type: db.Sequelize.QueryTypes.SELECT
-                                });
+                                type: db.Sequelize.QueryTypes.SELECT
+                            });
                             body += `
                             <div class="col-md-12">
                                 <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
@@ -4742,12 +4744,12 @@ let main = {
                                 rv.datahoraatendido between :dataini and :datafim
                             group by 1,2) as x
                             `, {
-                                    type: db.sequelize.QueryTypes.SELECT
-                                    , replacements: {
-                                        dataini: application.formatters.be.datetime(obj.req.body.dataini)
-                                        , datafim: application.formatters.be.datetime(obj.req.body.datafim)
-                                    }
-                                });
+                                type: db.sequelize.QueryTypes.SELECT
+                                , replacements: {
+                                    dataini: application.formatters.be.datetime(obj.req.body.dataini)
+                                    , datafim: application.formatters.be.datetime(obj.req.body.datafim)
+                                }
+                            });
 
                             let report = {};
                             report.__title = `Requisições Atendidas</br>${obj.req.body.dataini} até ${obj.req.body.datafim}`;
@@ -9700,8 +9702,8 @@ let main = {
                                 opr.id = ${obj.ids[0]}) as x
                         order by 1,2		
                         `, {
-                                type: db.sequelize.QueryTypes.SELECT
-                            });
+                            type: db.sequelize.QueryTypes.SELECT
+                        });
 
                         let qtd = 0;
                         let pesoliquido = 0;
@@ -10520,9 +10522,9 @@ let main = {
                             and s.licenciado = true
                             order by 1, 2, 3
                         `, {
-                                type: db.sequelize.QueryTypes.SELECT
-                                , replacements: { iddeposito: obj.req.body.iddeposito }
-                            });
+                            type: db.sequelize.QueryTypes.SELECT
+                            , replacements: { iddeposito: obj.req.body.iddeposito }
+                        });
 
                         let report = {};
                         report.__title = obj.event.description;
@@ -10563,9 +10565,9 @@ let main = {
                         group by 1
                         order by 1
                         `, {
-                                type: db.sequelize.QueryTypes.SELECT
-                                , replacements: { iddeposito: obj.req.body.iddeposito }
-                            });
+                            type: db.sequelize.QueryTypes.SELECT
+                            , replacements: { iddeposito: obj.req.body.iddeposito }
+                        });
 
                         report.__table += `
                         <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:50%;margin-top: 15px;">
@@ -10617,8 +10619,8 @@ let main = {
                             e.idequipamentotipo in (2,3,4,5,11) and ativo
                         order by e.hostname
                         `, {
-                                type: db.sequelize.QueryTypes.SELECT
-                            });
+                            type: db.sequelize.QueryTypes.SELECT
+                        });
 
                         let report = {};
                         report.__title = obj.event.description;
