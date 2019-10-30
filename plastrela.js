@@ -2053,9 +2053,8 @@ let main = {
                             let item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
                             let tpitem = await db.getModel('est_tpitem').findOne({ where: { id: item ? item.idtpitem : 0 } });
                             if ([5].indexOf(tpitem.codigo) >= 0) {
-                                let groupusers = await db.getModel('groupusers').findOne({ description: 'COMPRAS' });
-                                let user = await db.getModel('users').findOne({ id: obj.req.user.id });
-                                console.log(user.idgroupusers, groupusers.id);
+                                let groupusers = await db.getModel('groupusers').findOne({ where: { description: 'COMPRAS' } });
+                                let user = await db.getModel('users').findOne({ where: { id: obj.req.user.id } });
                                 if (user.idgroupusers != groupusers.id) {
                                     return application.error(obj.res, { msg: 'Apenas o setor de COMPRAS pode alterar itens do tipo 5' });
                                 }
