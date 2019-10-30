@@ -2055,6 +2055,7 @@ let main = {
                             if ([5].indexOf(tpitem.codigo) >= 0) {
                                 let groupusers = await db.getModel('groupusers').findOne({ description: 'COMPRAS' });
                                 let user = await db.getModel('users').findOne({ id: obj.req.user.id });
+                                console.log(user.idgroupusers, groupusers.id);
                                 if (user.idgroupusers != groupusers.id) {
                                     return application.error(obj.res, { msg: 'Apenas o setor de COMPRAS pode alterar itens do tipo 5' });
                                 }
