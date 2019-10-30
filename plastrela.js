@@ -2038,13 +2038,10 @@ let main = {
             solicitacaoitem: {
                 onsave: async function (obj, next) {
                     try {
-
                         let config = await db.getModel('cmp_config').findOne();
-
                         if (obj.id == 0) {
                             obj.register.iduser = obj.req.user.id;
                             obj.register.datainclusao = moment();
-
                             if (!obj.register.idestado) {
                                 obj.register.idestado = config.idsolicitacaoestadoinicial;
                             }
@@ -2052,10 +2049,18 @@ let main = {
                             if (obj.register._previousDataValues.idestado == config.idsolicitacaoestadofinal) {
                                 return application.error(obj.res, { msg: 'Não é possivel modificar uma solicitação finalizada' });
                             }
+                            let versao = await db.getModel('pcp_versao').findOne({ where: { id: obj.register.idversao || 0 } });
+                            let item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
+                            let tpitem = await db.getModel('est_tpitem').findOne({ where: { id: item ? item.idtpitem : 0 } });
+                            if ([5].indexOf(tpitem.codigo) >= 0) {
+                                let groupusers = await db.getModel('groupusers').findOne({ description: 'COMPRAS' });
+                                let user = await db.getModel('users').findOne({ id: obj.req.user.id });
+                                if (user.idgroupusers != groupusers.id) {
+                                    return application.error(obj.res, { msg: 'Apenas o setor de COMPRAS pode alterar itens do tipo 5' });
+                                }
+                            }
                         }
-
                         await next(obj);
-
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
