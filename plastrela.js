@@ -1064,7 +1064,7 @@ let main = {
                         }
                     }
                 } else { // Novo
-                    let tipo = await db.getModel('atv_tipo').findOne({ where: { descricaocompleta: 'TI - Geral' } });
+                    let tipo = await db.getModel('atv_tipo').findOne({ where: { descricaocompleta: 'TI - Não Classificado' } });
                     let status_inicial = await db.getModel('atv_tipo_status').findOne({ include: [{ all: true }], where: { idtipo: tipo.id, inicial: true } });
                     let user = (await db.getModel('users').findOrCreate({ where: { email: email.from[0].address } }))[0];
                     if (!user.fullname) {
