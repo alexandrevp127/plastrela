@@ -7156,6 +7156,14 @@ let main = {
                         let recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
                         let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: obj.data.idvolume } });
                         let vrop = await db.getModel('est_volumereserva').findOne({ where: { idvolume: volume.id, idopetapa: opetapa.id } });
+                        if (!vrop) {
+                            let conjugadas = await db.getModel('pcp_opconjugada').findAll({ include: [{ all: true }], where: { idopprincipal: oprecurso.id } });
+                            for (let i = 0; i < conjugadas.length; i++) {
+                                if (opetapa.id == conjugadas[i].opconjugada.idopetapa) {
+                                    vrop = true;
+                                }
+                            }
+                        }
                         let versao = await db.getModel('pcp_versao').findOne({ where: { id: volume.idversao } });
                         let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
                         let deposito = await db.getModel('est_deposito').findOne({ where: { id: volume.iddeposito } });
