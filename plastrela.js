@@ -124,6 +124,10 @@ let main = {
                     if (!statusfinal) {
                         return application.error(obj.res, { msg: 'Status Final não configurado para este tipo' });
                     }
+                    let tipo = await db.getModel('atv_tipo').findOne({ where: { id: atividade.idtipo } });
+                    if (tipo && tipo.naopermitidoencerramento) {
+                        return application.error(obj.res, { msg: 'Não é permitido encerrar este tipo de atividade' });
+                    }
                     atividade.idstatus = statusfinal.idstatus;
                     atividade.datahora_termino = moment();
                     atividade.encerrada = true;
@@ -6081,6 +6085,7 @@ let main = {
                                 , type: db.sequelize.QueryTypes.SELECT
                             });
                         if (results.length > 0) {
+                            console.log('ap sobreposto ', results);
                             return application.error(obj.res, { msg: 'Existe um apontamento de ' + results[0].tipo + ' neste horário' });
                         }
                         let saved = await next(obj);
