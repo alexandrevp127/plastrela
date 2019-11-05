@@ -6118,7 +6118,7 @@ let main = {
 
                         let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: obj.data.idapproducao } });
                         let dataUltimoAp = await main.plastrela.pcp.ap.f_dataUltimoAp(approducao.idoprecurso);
-                        console.log(dataUltimoAp);
+
                         if (dataUltimoAp) {
                             return application.success(obj.res, { data: moment(dataUltimoAp, 'YYYY-MM-DD HH:mm').add(1, 'minutes').format('DD/MM/YYYY HH:mm') });
                         } else {
