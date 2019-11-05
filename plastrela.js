@@ -6121,7 +6121,7 @@ let main = {
                         let dataUltimoAp = await main.plastrela.pcp.ap.f_dataUltimoAp(approducao.idoprecurso);
 
                         if (dataUltimoAp) {
-                            return application.success(obj.res, { data: moment(dataUltimoAp, 'YYYY-MM-DD HH:mm').add(1, 'minutes').format('DD/MM/YYYY HH:mm') });
+                            return application.success(obj.res, { data: moment.tz(dataUltimoAp, 'YYYY-MM-DD HH:mm', 'America/Sao_Paulo').add(1, 'minutes').format('DD/MM/YYYY HH:mm') });
                         } else {
                             return application.success(obj.res, { data: '' });
                         }
