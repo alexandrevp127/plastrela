@@ -6085,7 +6085,6 @@ let main = {
                                 , type: db.sequelize.QueryTypes.SELECT
                             });
                         if (results.length > 0) {
-                            console.log('ap sobreposto ', results);
                             return application.error(obj.res, { msg: 'Existe um apontamento de ' + results[0].tipo + ' neste horário' });
                         }
                         let saved = await next(obj);
@@ -6119,9 +6118,9 @@ let main = {
 
                         let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: obj.data.idapproducao } });
                         let dataUltimoAp = await main.plastrela.pcp.ap.f_dataUltimoAp(approducao.idoprecurso);
-
+                        console.log(dataUltimoAp);
                         if (dataUltimoAp) {
-                            return application.success(obj.res, { data: moment.tz(dataUltimoAp, 'YYYY-MM-DD HH:mm', 'America/Sao_Paulo').add(1, 'minutes').format('DD/MM/YYYY HH:mm') });
+                            return application.success(obj.res, { data: moment(dataUltimoAp, 'YYYY-MM-DD HH:mm').add(1, 'minutes').format('DD/MM/YYYY HH:mm') });
                         } else {
                             return application.success(obj.res, { data: '' });
                         }
@@ -6848,7 +6847,6 @@ let main = {
                                 , type: db.sequelize.QueryTypes.SELECT
                             });
                         if (results.length > 0) {
-                            console.log('ap sobreposto ', results);
                             return application.error(obj.res, { msg: 'Existe um apontamento de ' + results[0].tipo + ' neste horário' });
                         }
 
