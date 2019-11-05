@@ -6848,6 +6848,7 @@ let main = {
                                 , type: db.sequelize.QueryTypes.SELECT
                             });
                         if (results.length > 0) {
+                            console.log('ap sobreposto ', results);
                             return application.error(obj.res, { msg: 'Existe um apontamento de ' + results[0].tipo + ' neste horário' });
                         }
 
