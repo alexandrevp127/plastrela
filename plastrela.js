@@ -7937,7 +7937,7 @@ let main = {
                             return application.error(obj.res, { msg: 'Nâo é possível encerrar uma OP sem insumos' });
                         }
 
-                        if (tprecurso.codigo == 2) { // Impressão
+                        if ([20, 200].indexOf(etapa.codigo) >= 0) { // Impressão
                             let apcliche = await db.getModel('pcp_apcliche').findOne({ where: { idoprecurso: oprecurso.id } });
                             if (!apcliche) {
                                 return application.error(obj.res, { msg: 'Não é possível encerrar uma OP de Impressão sem clichês montados' });
@@ -7974,67 +7974,66 @@ let main = {
                             if (!Number.isInteger(parseInt(oprecurso.qtdlavagens))) {
                                 return application.error(obj.res, { msg: 'Favor informar a Quantidade de Lavagens e salvar antes do encerramento da OP' });
                             }
-                        }
 
-                        //Conferência
-                        let sql = await db.sequelize.query(`
-                        select
-                            *
-                        from
-                            (select
-                                ac.descricao as atributo
-                                , g.description as grupo
-                                , acg.qtdpessoas
-                                , (select
-                                    count(*)
-                                from
-                                    pcp_oprecursoconferencia oprc
-                                left join users u on (oprc.iduser = u.id)
-                                where oprc.idoprecurso = ${oprecurso.id}
-                                and u.idgroupusers = acg.idgroupusers
-                                and oprc.idatributoconferencia = ac.id) as qtd
+                            //Conferência
+                            let sql = await db.sequelize.query(`
+                            select
+                                *
                             from
-                                pcp_atributoconferencia ac
-                            inner join pcp_atributoconferenciagrupo acg on (ac.id = acg.idatributoconferencia)
-                            left join groupusers g on (acg.idgroupusers = g.id)
+                                (select
+                                    ac.descricao as atributo
+                                    , g.description as grupo
+                                    , acg.qtdpessoas
+                                    , (select
+                                        count(*)
+                                    from
+                                        pcp_oprecursoconferencia oprc
+                                    left join users u on (oprc.iduser = u.id)
+                                    where oprc.idoprecurso = ${oprecurso.id}
+                                    and u.idgroupusers = acg.idgroupusers
+                                    and oprc.idatributoconferencia = ac.id) as qtd
+                                from
+                                    pcp_atributoconferencia ac
+                                inner join pcp_atributoconferenciagrupo acg on (ac.id = acg.idatributoconferencia)
+                                left join groupusers g on (acg.idgroupusers = g.id)
+                                where
+                                    ac.idtprecurso = ${etapa.idtprecurso}) as x
                             where
-                                ac.idtprecurso = ${etapa.idtprecurso}) as x
-                        where
-                            qtd < qtdpessoas
-                        `
-                            , { type: db.Sequelize.QueryTypes.SELECT });
-                        if (sql.length > 0) {
-                            let body = `
-                            <div class="col-md-12">
-                                <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                                qtd < qtdpessoas
+                            `
+                                , { type: db.Sequelize.QueryTypes.SELECT });
+                            if (sql.length > 0) {
+                                let body = `
+                                <div class="col-md-12">
+                                    <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                                        <tr>
+                                            <td style="text-align:center;"><strong>Atributo</strong></td>
+                                            <td style="text-align:center;"><strong>Setor</strong></td>
+                                            <td style="text-align:center;"><strong>Quantidade de pessoas à conferir</strong></td>
+                                        </tr>
+                                `;
+                                for (let i = 0; i < sql.length; i++) {
+                                    body += `
                                     <tr>
-                                        <td style="text-align:center;"><strong>Atributo</strong></td>
-                                        <td style="text-align:center;"><strong>Setor</strong></td>
-                                        <td style="text-align:center;"><strong>Quantidade de pessoas à conferir</strong></td>
+                                        <td style="text-align:left;"> ${sql[i].atributo}   </td>
+                                        <td style="text-align:left;">  ${sql[i].grupo}   </td>
+                                        <td style="text-align:center;">   ${parseInt(sql[i].qtdpessoas) - parseInt(sql[i].qtd)}   </td>
                                     </tr>
-                            `;
-                            for (let i = 0; i < sql.length; i++) {
-                                body += `
-                                <tr>
-                                    <td style="text-align:left;"> ${sql[i].atributo}   </td>
-                                    <td style="text-align:left;">  ${sql[i].grupo}   </td>
-                                    <td style="text-align:center;">   ${parseInt(sql[i].qtdpessoas) - parseInt(sql[i].qtd)}   </td>
-                                </tr>
-                            `;
-                            }
-                            body += `
-                                </table>
-                            </div>
-                            `;
-
-                            return application.success(obj.res, {
-                                modal: {
-                                    id: 'modalevtg'
-                                    , title: 'Atributos que necessitam de conferência'
-                                    , body: body
-                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Voltar</button>'
+                                `;
                                 }
-                            });
+                                body += `
+                                    </table>
+                                </div>
+                                `;
+                                return application.success(obj.res, {
+                                    modal: {
+                                        id: 'modalevtg'
+                                        , title: 'Atributos que necessitam de conferência'
+                                        , body: body
+                                        , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Voltar</button>'
+                                    }
+                                });
+                            }
                         }
 
                         // Encerrar com Quantidade a menos
