@@ -24,7 +24,8 @@ let main = {
                             return application.error(obj.res, { msg: 'Status Inicial não configurado para este tipo' });
                         }
                         obj.register.idstatus = statusinicial.idstatus;
-                        obj.register.iduser_responsavel = statusinicial.atv_tipo.iduserpadrao || null;
+                        if (!obj.register.iduser_responsavel)
+                            obj.register.iduser_responsavel = statusinicial.atv_tipo.iduserpadrao || null;
                     } else {
                         // Autenticar/Leitura
                         if (!obj.register.iduser_leitura) {
@@ -1783,7 +1784,7 @@ let main = {
                     left join cad_item i on (v.iditem = i.id)
                     where
                         vol.consumido = false
-                        and d.codigo in (6,7,8,9,10,11)
+                        and d.codigo not in (1)
                     group by 1,2
                     order by 1,2
                     `, { type: db.sequelize.QueryTypes.SELECT });
@@ -4589,19 +4590,15 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-
-                        t = await db.sequelize.transaction();
                         let requisicoes = await db.getModel('est_requisicaovolume').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.ids } } });
-
                         for (let i = 0; i < requisicoes.length; i++) {
                             if (requisicoes[i].datahoraatendido) {
                                 return application.error(obj.res, { msg: `A requisição ${requisicoes[i].id} já foi atendida` });
                             }
                         }
-
+                        t = await db.sequelize.transaction();
                         let config = await db.getModel('config').findOne();
                         let empresa = config.cnpj == "90816133000123" ? 2 : 1;
-
                         for (let i = 0; i < requisicoes.length; i++) {
                             let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: requisicoes[i].idvolume } });
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
