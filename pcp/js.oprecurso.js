@@ -391,7 +391,7 @@ $(function () {
         });
 
         var $ul = $('#resumo').parent().parent();
-        if ($('input[name="etapa"]').val() == '20') {
+        if ([20, 25, 200, 250].indexOf(parseInt($('input[name="etapa"]').val())) >= 0) {
             $ul.prepend('<li><a id="chamarColorista" href="javascript:void(0)"><i class="fa fa-paint-brush"></i> Chamar Colorista</a></li>');
             $('#chamarColorista').click(function () {
                 application.jsfunction('plastrela.pcp.oprecurso.js_chamarColoristaModal', { idoprecurso: application.functions.getId() }, function (response) {
