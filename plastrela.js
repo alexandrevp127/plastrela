@@ -6330,6 +6330,29 @@ let main = {
                                     , apontado: false
                                 });
                             }
+                            let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { idoprecurso: oprecurso.id, recipiente: null } });
+                            let idsvolumes = [];
+                            for (let i = 0; i < apinsumos.length; i++) {
+                                idsvolumes.push(apinsumos[i].idvolume);
+                                apinsumos[i].recipiente = volume.id;
+                                apinsumos[i].save({ iduser: obj.req.user.id });
+                                db.getModel('est_volumemistura').create({
+                                    idvolume: volume.id
+                                    , idvmistura: apinsumos[i].idvolume
+                                    , qtd: apinsumos[i].qtd
+                                }, { iduser: obj.req.body.iduser });
+                            }
+                            let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: idsvolumes } }, order: [['datavalidade', 'asc']] });
+                            let lotes = [];
+                            let datavalidade = null;
+                            for (let i = 0; i < volumes.length; i++) {
+                                if (!datavalidade)
+                                    datavalidade = volumes[i].datavalidade;
+                                lotes.push(volumes[i].lote);
+                            }
+                            volume.datavalidade = datavalidade;
+                            volume.lote = lotes.join(' + ');
+                            volume.save({ iduser: obj.req.user.id });
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -6710,8 +6733,8 @@ let main = {
                         let volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
                         let needle = require('needle');
                         while (true) {
-                            await needle('get', 'http://172.10.30.115:8081/write/' + volume.id);
-                            let volid = parseInt((await needle('get', 'http://172.10.30.115:8081/read')).body);
+                            await needle('get', 'http://localhost:8082/write/' + volume.id);
+                            let volid = parseInt((await needle('get', 'http://localhost:8082/read')).body);
                             if (volid == volume.id) {
                                 break;
                             }
