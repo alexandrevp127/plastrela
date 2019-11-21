@@ -7337,8 +7337,11 @@ let main = {
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-                        let config = await db.getModel('pcp_config').findOne();
+                        const config = await db.getModel('pcp_config').findOne();
                         let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
+                        if (apinsumos.length <= 0) {
+                            return application.error(obj.res, { msg: 'Os apontamentos selecionados já foram excluídos, entre novamente na OP' });
+                        }
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumos[0].idoprecurso } });
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
