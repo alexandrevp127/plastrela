@@ -10257,7 +10257,6 @@ let main = {
                         order by recurso, op`
                         ])
                     });
-
                     query = JSON.parse(query.body);
 
                     let fd = function (val) {
