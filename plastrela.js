@@ -10212,11 +10212,11 @@ let main = {
                     let query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
                         function: 'PLAIniflexSQL', param: JSON.stringify([`
                         with ops as (
-                                select empresa, etapa, recurso, op from pcpapproducao where empresa = ${empresa} and data_hora_ini >= cast('${obj.data.datahoraini}:00' as timestamp) and data_hora_fim <= cast('${obj.data.datahorafim}:00' as timestamp)
+                                select empresa, etapa, recurso, op from pcpapproducao where etapa != '25' and empresa = ${empresa} and data_hora_ini >= cast('${obj.data.datahoraini}:00' as timestamp) and data_hora_fim <= cast('${obj.data.datahorafim}:00' as timestamp)
                                 union
-                                select empresa, etapa, recurso, op from pcpapparada where empresa = ${empresa} and data_hora_ini >= cast('${obj.data.datahoraini}:00' as timestamp) and data_hora_fim <= cast('${obj.data.datahorafim}:00' as timestamp)
+                                select empresa, etapa, recurso, op from pcpapparada where etapa != '25' and empresa = ${empresa} and data_hora_ini >= cast('${obj.data.datahoraini}:00' as timestamp) and data_hora_fim <= cast('${obj.data.datahorafim}:00' as timestamp)
                                 union
-                                select empresa, etapa, recurso, op from pcpapperda where empresa = ${empresa} and data_hora between cast('${obj.data.datahoraini}:00' as timestamp) and cast('${obj.data.datahorafim}:00' as timestamp)
+                                select empresa, etapa, recurso, op from pcpapperda where etapa != '25' and empresa = ${empresa} and data_hora between cast('${obj.data.datahoraini}:00' as timestamp) and cast('${obj.data.datahorafim}:00' as timestamp)
                         )
                         select
                                 x.*

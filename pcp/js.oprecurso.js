@@ -1,7 +1,7 @@
 $(function () {
     var intervalBalanca = null;
     var totalNaoVinculado = 0;
-    var rfidurl = 'http://172.10.30.115:8081';
+    var rfidurl = 'http://localhost:8082';
     if (application.isRegisterview) {
 
         var $idrecurso = $('select[name="idrecurso"]');
