@@ -400,7 +400,7 @@ $(function () {
             });
             $('#col-setup-impressao').removeClass('hidden');
         }
-        if (['20', '30', '35'].indexOf($('input[name="etapa"]').val()) >= 0) {
+        if (['20', '30', '35', '80', '800'].indexOf($('input[name="etapa"]').val()) >= 0) {
             $ul.prepend('<li><a id="chamarCQ" href="javascript:void(0)"><i class="fa fa-certificate"></i> Chamar CQ</a></li>');
             $('#chamarCQ').click(function () {
                 application.jsfunction('plastrela.pcp.oprecurso.js_chamarCQModal', { idoprecurso: application.functions.getId() }, function (response) {
