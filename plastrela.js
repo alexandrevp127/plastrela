@@ -6168,9 +6168,10 @@ let main = {
                         if (tprecurso.codigo == 8) {
                             if (!obj.register.idopetapa)
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idopetapa'] });
-                            let revopetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: obj.register.idopetapa } });
-                            let revdep = await db.getModel('est_deposito').findOne({ where: { codigo: 8 } });
-                            sql.push({ idopetapa: revopetapa.id, iddeposito: revdep.id });
+                            let revopetapa = await db.getModel('pcp_opetapa').findOne({ include: [{ all: true }], where: { id: obj.register.idopetapa } });
+                            if (!revopetapa.pcp_etapa || !revopetapa.pcp_etapa.iddeposito)
+                                return application.error(obj.res, { msg: 'Depósito de destino não configurado no cadastro de Etapas' });
+                            sql.push({ idopetapa: revopetapa.id, iddeposito: revopetapa.pcp_etapa.iddeposito });
                         } else {
                             sql = await db.sequelize.query([1].indexOf(tprecurso.codigo) >= 0 ?
                                 `with et as (
@@ -8203,36 +8204,15 @@ let main = {
                 }
                 , e_retornarProducao: async function (obj) {
                     try {
-
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-
-                        let config = await db.getModel('pcp_config').findOne();
-
+                        const config = await db.getModel('pcp_config').findOne();
                         await db.getModel('pcp_oprecurso').update({ idestado: config.idestadoinicial }
                             , { where: { id: obj.ids[0] }, iduser: obj.req.user.id });
-
-                        let opr = (await main.platform.model.findAll('pcp_oprecurso', { where: { id: obj.ids[0] } })).rows[0];
-
                         application.success(obj.res, { msg: application.message.success, reloadtables: true });
-
-                        let setor = await db.getModel('cad_setor').findOne({ where: { descricao: 'PCP (Apontamento)' } });
-                        if (setor) {
-                            let usuarios = await db.getModel('cad_setorusuario').findAll({ where: { idsetor: setor.id } });
-                            let arr = [];
-                            for (let i = 0; i < usuarios.length; i++) {
-                                arr.push(usuarios[i].idusuario);
-                            }
-                            main.platform.notification.create(arr, {
-                                title: `Retorno de OP para Produção`
-                                , description: `OP ${opr.op}/${opr.etapa}`
-                                , link: `/v/apontamento_de_producao/${opr.id}`
-                            });
-                        }
-
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
                 , e_gerarOPRevisora: async function (obj) {
@@ -8243,7 +8223,6 @@ let main = {
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.ids[0] } });
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         let etapa = await db.getModel('pcp_etapa').findOne({ where: { codigo: 80 } });
-
                         let opetapanova = await db.getModel('pcp_opetapa').create({
                             seq: 99
                             , idop: opetapa.idop
@@ -10510,7 +10489,7 @@ let main = {
                                     , description: notificationDescription
                                     , link: '/v/curriculo/' + saved.register.id
                                 });
-                                let param2 = await db.getModel('parameter').findOne({ where: { key: 'rh_curriculoNotificationEmailMS' } });
+                                const param2 = await db.getModel('parameter').findOne({ where: { key: 'rh_curriculoNotificationEmailMS' } });
                                 if (param2) {
                                     main.platform.mail.f_sendmail({
                                         to: JSON.parse(param2.value)
@@ -10533,13 +10512,15 @@ let main = {
             equipamento: {
                 onsave: async (obj, next) => {
                     try {
-                        let register = await db.getModel('cad_equipamento').findOne({ where: { id: { [db.Op.ne]: obj.id }, patrimonio: obj.register.patrimonio } })
-                        if (register) {
-                            return application.error(obj.res, { msg: 'Já existe um equipamento com este patrimônio' });
+                        if (obj.register.patrimonio) {
+                            const register = await db.getModel('cad_equipamento').findOne({ raw: true, where: { id: { [db.Op.ne]: obj.id }, patrimonio: obj.register.patrimonio } })
+                            if (register) {
+                                return application.error(obj.res, { msg: 'Já existe um equipamento com este patrimônio' });
+                            }
                         }
                         await next(obj);
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
                 , e_softwareSemLicenca: async (obj) => {
