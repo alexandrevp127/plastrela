@@ -286,6 +286,25 @@
   <hop> <from>Dummy &#x28;do nothing&#x29;</from><to>Table output 2</to><enabled>Y</enabled> </hop>
   </order>
   <step>
+    <name>Dummy &#x28;do nothing&#x29;</name>
+    <type>Dummy</type>
+    <description/>
+    <distribute>N</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>326</xloc>
+      <yloc>209</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
+  <step>
     <name>Execute row SQL script</name>
     <type>ExecSQLRow</type>
     <description/>
@@ -357,7 +376,7 @@
     <optimizationLevel>9</optimizationLevel>
     <jsScripts>      <jsScript>        <jsScript_type>0</jsScript_type>
         <jsScript_name>Script 1</jsScript_name>
-        <jsScript_script>var texto_integ &#x3d; texto&#x3b;&#xd;&#xa;&#xd;&#xa;var sistemas_envol &#x3d; &#x27;PESA X INIFLEX&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var tipo &#x3d; texto_integ.split&#x28;&#x27;&#x7c;&#x27;&#x29;&#x5b;0&#x5d;&#x3b;&#xd;&#xa;&#xd;&#xa;var leiaute_integ &#x3d; &#x27;&#x27;&#x3b;&#xd;&#xa;if&#x28;tipo &#x3d;&#x3d; &#x27;10&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPRODUCAO&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;11&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPRODLOTE&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;20&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPARADA&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;30&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPERDA&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;40&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPINSUMO&#x27;&#x3b;&#xd;&#xa;&#x7d; &#xd;&#xa;&#xd;&#xa;var operacao_integ &#x3d; &#x27;DEL&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var campos_chave &#x3d; &#x27;1&#x3b;1515&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var separador &#x3d; &#x27;&#x7c;&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var situacao_integ &#x3d; &#x27;N&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var integrado_novo &#x3d; true&#x3b;&#xd;&#xa;&#xd;&#xa;var query &#x3d; texto_integ.split&#x28;&#x27;&#x7c;&#x27;&#x29;&#x3b;&#xd;&#xa;var tipo &#x3d; query&#x5b;0&#x5d;&#x3b;&#xd;&#xa;if&#x28;tipo &#x3d;&#x3d; &#x27;40&#x27;&#x29; &#x7b;&#xd;&#xa;	query &#x3d; &#x22;delete from integracaoiniflex2 where leiaute_integ &#x3d; &#x27;PCPAPINSUMO&#x27; and situacao_integ &#x3d; &#x27;E&#x27; and to_char&#x28;texto_integ&#x29; like &#x27;&#x25;&#x22;&#x2b;query&#x5b;query.length-1&#x5d;&#x2b;&#x22;&#x25;&#x27;&#x3b;&#x22;&#x3b;&#xd;&#xa;&#x7d; else &#x7b;&#xd;&#xa;	query &#x3d; &#x27;&#x27;&#x3b;&#xd;&#xa;&#x7d;</jsScript_script>
+        <jsScript_script>var texto_integ &#x3d; texto&#x3b;&#xd;&#xa;&#xd;&#xa;var sistemas_envol &#x3d; &#x27;PESA X INIFLEX&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var tipo &#x3d; texto_integ.split&#x28;&#x27;&#x7c;&#x27;&#x29;&#x5b;0&#x5d;&#x3b;&#xd;&#xa;&#xd;&#xa;var leiaute_integ &#x3d; &#x27;&#x27;&#x3b;&#xd;&#xa;if&#x28;tipo &#x3d;&#x3d; &#x27;10&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPRODUCAO&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;11&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPRODLOTE&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;20&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPARADA&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;30&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPPERDA&#x27;&#x3b;&#xd;&#xa;&#x7d; else if &#x28;tipo &#x3d;&#x3d; &#x27;40&#x27;&#x29;&#x7b;&#xd;&#xa;  leiaute_integ &#x3d; &#x27;PCPAPINSUMO&#x27;&#x3b;&#xd;&#xa;&#x7d; &#xd;&#xa;&#xd;&#xa;var operacao_integ &#x3d; &#x27;DEL&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var campos_chave &#x3d; &#x27;1&#x3b;1515&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var separador &#x3d; &#x27;&#x7c;&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var situacao_integ &#x3d; &#x27;N&#x27;&#x3b;&#xd;&#xa;&#xd;&#xa;var integrado_novo &#x3d; true&#x3b;&#xd;&#xa;&#xd;&#xa;var query &#x3d; texto_integ.split&#x28;&#x27;&#x7c;&#x27;&#x29;&#x3b;&#xd;&#xa;var tipo &#x3d; query&#x5b;0&#x5d;&#x3b;&#xd;&#xa;if&#x28;tipo &#x3d;&#x3d; &#x27;40&#x27;&#x29; &#x7b;&#xd;&#xa;	query &#x3d; &#x22;delete from integracaoiniflex2 where sistemas_envol &#x3d; &#x27;PESA X INIFLEX&#x27; and leiaute_integ &#x3d; &#x27;PCPAPINSUMO&#x27; and situacao_integ &#x3d; &#x27;E&#x27; and to_char&#x28;texto_integ&#x29; like &#x27;&#x25;&#x22;&#x2b;query&#x5b;query.length-1&#x5d;&#x2b;&#x22;&#x25;&#x27;&#x3b;&#x22;&#x3b;&#xd;&#xa;&#x7d; else &#x7b;&#xd;&#xa;	query &#x3d; &#x27;&#x27;&#x3b;&#xd;&#xa;&#x7d;</jsScript_script>
       </jsScript>    </jsScripts>    <fields>      <field>        <name>texto_integ</name>
         <rename>texto_integ</rename>
         <type>String</type>
@@ -523,45 +542,6 @@
     </step>
 
   <step>
-    <name>Update</name>
-    <type>Update</type>
-    <description/>
-    <distribute>Y</distribute>
-    <custom_distribution/>
-    <copies>1</copies>
-         <partitioning>
-           <method>none</method>
-           <schema_name/>
-           </partitioning>
-    <connection>SIPv2</connection>
-    <skip_lookup>N</skip_lookup>
-    <commit>100</commit>
-    <use_batch>N</use_batch>
-    <error_ignored>N</error_ignored>
-    <ignore_flag_field/>
-    <lookup>
-      <schema/>
-      <table>pcp_apintegracao</table>
-      <key>
-        <name>id</name>
-        <field>id</field>
-        <condition>&#x3d;</condition>
-        <name2/>
-        </key>
-      <value>
-        <name>integrado</name>
-        <rename>integrado_novo</rename>
-        </value>
-      </lookup>
-     <cluster_schema/>
- <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>625</xloc>
-      <yloc>234</yloc>
-      <draw>Y</draw>
-      </GUI>
-    </step>
-
-  <step>
     <name>Table output 2</name>
     <type>TableOutput</type>
     <description/>
@@ -632,6 +612,45 @@
     </step>
 
   <step>
+    <name>Update</name>
+    <type>Update</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+    <connection>SIPv2</connection>
+    <skip_lookup>N</skip_lookup>
+    <commit>100</commit>
+    <use_batch>N</use_batch>
+    <error_ignored>N</error_ignored>
+    <ignore_flag_field/>
+    <lookup>
+      <schema/>
+      <table>pcp_apintegracao</table>
+      <key>
+        <name>id</name>
+        <field>id</field>
+        <condition>&#x3d;</condition>
+        <name2/>
+        </key>
+      <value>
+        <name>integrado</name>
+        <rename>integrado_novo</rename>
+        </value>
+      </lookup>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>625</xloc>
+      <yloc>234</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
+  <step>
     <name>Update 2</name>
     <type>Update</type>
     <description/>
@@ -666,25 +685,6 @@
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
       <xloc>283</xloc>
       <yloc>301</yloc>
-      <draw>Y</draw>
-      </GUI>
-    </step>
-
-  <step>
-    <name>Dummy &#x28;do nothing&#x29;</name>
-    <type>Dummy</type>
-    <description/>
-    <distribute>N</distribute>
-    <custom_distribution/>
-    <copies>1</copies>
-         <partitioning>
-           <method>none</method>
-           <schema_name/>
-           </partitioning>
-     <cluster_schema/>
- <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>326</xloc>
-      <yloc>209</yloc>
       <draw>Y</draw>
       </GUI>
     </step>
