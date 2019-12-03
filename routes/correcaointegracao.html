@@ -102,7 +102,7 @@
                 url: 'http://intranet.plastrela.com.br/SistemaH/scripts/socket/scripts2socket.php',
                 data: {
                     function: 'PLAIniflexSQL', param: JSON.stringify([
-                        "select x.id, x.leiaute_integ, to_char(x.texto_integ) as texto_integ, to_char(x.informacao_erro) as informacao_erro from integracao.integracaoiniflex2 x where situacao_integ = 'E' " + where + " order by x.id"
+                        "select x.id, x.leiaute_integ, to_char(x.texto_integ) as texto_integ, to_char(x.informacao_erro) as informacao_erro from integracao.integracaoiniflex2 x where sistemas_envol = 'PESA X INIFLEX' and situacao_integ = 'E' " + where + " order by x.id"
                     ])
                 },
                 success: function (response) {
