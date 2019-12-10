@@ -2964,6 +2964,9 @@ let main = {
                                     case 3:
                                         report.formato = formato[0].larguralam + ' x ' + formato[0].espessuralam;
                                         break;
+                                    default:
+                                        report.formato = '';
+                                        break;
                                 }
                             }
                             report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
