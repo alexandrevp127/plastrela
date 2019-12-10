@@ -6892,10 +6892,10 @@ let main = {
                         if (obj.register.peso <= 0) {
                             return application.error(obj.res, { msg: 'O peso deve ser maior que 0', invalidfields: ['peso'] });
                         }
-                        const ecp = await db.getModel('pcp_etapacausaperda').findOne({ where: { idtipoperda: obj.register.idtipoperda || 0 } });
-                        if (ecp && obj.register.idetapacausa == null) {
-                            return application.error(obj.res, { msg: 'Para este tipo deve-se informar Etapa Causa e Recurso Causa', invalidfields: ['idetapacausa', 'idrecursocausa'] });
-                        }
+                        // const ecp = await db.getModel('pcp_etapacausaperda').findOne({ where: { idtipoperda: obj.register.idtipoperda || 0 } });
+                        // if (ecp && obj.register.idetapacausa == null) {
+                        //     return application.error(obj.res, { msg: 'Para este tipo deve-se informar Etapa Causa e Recurso Causa', invalidfields: ['idetapacausa', 'idrecursocausa'] });
+                        // }
                         if (obj.register.idetapacausa != null && obj.register.idrecursocausa == null) {
                             return application.error(obj.res, { msg: 'Deve-se informar Etapa Causa e Recurso Causa', invalidfields: ['idrecursocausa'] });
                         }
