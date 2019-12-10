@@ -2302,14 +2302,15 @@ let main = {
                 }
             }
             , movimentacao: {
-                onsave: async function (obj, next) {
+                onsave: async (obj, next) => {
                     try {
-                        let peca = await db.getModel('man_peca').findOne({ where: { id: obj.register.idmanpeca } });
-
+                        let peca = await db.getModel('man_peca').findOne({ where: { id: obj.register.idmanpeca || 0 } });
+                        if (!peca) {
+                            return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idmanpeca'] });
+                        }
                         if (obj.register.qtd <= 0) {
                             return application.error(obj.res, { msg: 'A Quantidade deve ser maior que 0', invalidfields: ['qtd'] });
                         }
-
                         if (obj.register.id > 0) {
                             if (obj.register._previousDataValues.tipo == 'Entrada') {
                                 peca.estoque = parseFloat(peca.estoque) - parseFloat(obj.register._previousDataValues.qtd);
@@ -2325,7 +2326,7 @@ let main = {
                         if (peca.estoque < 0) {
                             return application.error(obj.res, { msg: 'Estoque insuficiente' });
                         }
-                        let saved = await next(obj);
+                        const saved = await next(obj);
                         if (saved.success) {
                             peca.save({ iduser: obj.req.user.id });
                             if (parseFloat(peca.estoque) < parseFloat(peca.minimo)) {
@@ -2336,7 +2337,7 @@ let main = {
                             }
                         }
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
                 , ondelete: async function (obj, next) {
@@ -2356,6 +2357,112 @@ let main = {
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
+                    }
+                }
+            }
+            , os: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (obj.register.id == 0) {
+                            obj.register.datahora = moment();
+                            obj.register.iduser = obj.req.user.id;
+                            obj.register.estado = 'Nova';
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_getPlanta: async (obj) => {
+                    try {
+                        if (obj.data.idrecurso) {
+                            const recurso = await db.getModel('man_setorrecurso').findOne({ include: [{ all: true }], where: { idrecurso: obj.data.idrecurso } });
+                            if (!recurso) {
+                                return application.success(obj.res, { data: null });
+                            }
+                            const plantaitems = await db.getModel('man_plantarecursoitem').findAll({ include: [{ all: true }], where: { idplantarecurso: recurso.idplanta } });
+                            let data = {};
+                            if (plantaitems.length > 0) {
+                                data.img = plantaitems[0].man_plantarecurso.planta;
+                            }
+                            data.items = plantaitems;
+                            application.success(obj.res, { data: data });
+                        } else if (obj.data.idplanta) {
+                            const plantaitems = await db.getModel('man_plantarecursoitem').findAll({ include: [{ all: true }], where: { idplantarecurso: obj.data.idplanta } });
+                            let data = {};
+                            if (plantaitems.length > 0) {
+                                data.img = plantaitems[0].man_plantarecurso.planta;
+                            }
+                            data.items = plantaitems;
+                            application.success(obj.res, { data: data });
+                        } else {
+                            application.success(obj.res, { data: null });
+                        }
+
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
+            , planta: {
+                js_adicionarItem: async (obj) => {
+                    try {
+                        const planta = await db.getModel('man_plantarecurso').findOne({ where: { id: obj.data.idplanta || 0 } });
+                        if (!planta)
+                            return application.error(obj.res, { msg: 'Planta não encontrada' });
+                        const invalidfields = application.functions.getEmptyFields(obj.data, ['id', 'height', 'width', 'radius', 'positionx', 'positiony']);
+                        if (invalidfields.length > 0)
+                            return application.error(obj.res, { msg: 'Informe os campos corretamente', invalidfields: invalidfields });
+                        if (obj.data.id > 0) {
+                            let item = await db.getModel('man_plantarecursoitem').findOne({ where: { id: obj.data.id } });
+                            item.config = JSON.stringify({
+                                height: obj.data.height
+                                , width: obj.data.width
+                                , radius: obj.data.radius
+                                , rotation: obj.data.rotation
+                                , positionx: obj.data.positionx
+                                , positiony: obj.data.positiony
+                            });
+                            item.idcomponente = obj.data.idcomponente || null;
+                            item.idlink = obj.data.idlink || null;
+                            await item.save({ iduser: obj.req.user.id });
+                        } else {
+                            await db.getModel('man_plantarecursoitem').create({
+                                idplantarecurso: planta.id
+                                , idcomponente: obj.data.idcomponente || null
+                                , idlink: obj.data.idlink || null
+                                , config: JSON.stringify({
+                                    height: obj.data.height
+                                    , width: obj.data.width
+                                    , radius: obj.data.radius
+                                    , rotation: obj.data.rotation
+                                    , positionx: obj.data.positionx
+                                    , positiony: obj.data.positiony
+                                })
+                            }, { iduser: obj.req.user.id });
+                        }
+                        application.success(obj.res, {});
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_getItems: async (obj) => {
+                    try {
+                        const planta = await db.getModel('man_plantarecurso').findOne({ where: { id: obj.data.idplanta || 0 } });
+                        if (!planta)
+                            return application.error(obj.res, { msg: 'Planta não encontrada' });
+                        const items = await db.getModel('man_plantarecursoitem').findAll({ include: [{ all: true }], where: { idplantarecurso: planta.id } });
+                        application.success(obj.res, { data: items });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_deleteItem: async (obj) => {
+                    try {
+                        await db.getModel('man_plantarecursoitem').destroy({ iduser: obj.req.user.id, where: { id: obj.data.id } });
+                        application.success(obj.res, {});
+                    } catch (err) {
+                        application.fatal(obj.res, err);
                     }
                 }
             }
@@ -2741,6 +2848,7 @@ let main = {
                             let report = {};
                             let versao = await db.getModel('pcp_versao').findOne({ where: { id: volume.idversao } });
                             let item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
+                            let tpitem = await db.getModel('est_tpitem').findOne({ where: { id: item ? item.idtpitem : 0 } });
                             let grupo = await db.getModel('est_grupo').findOne({ where: { id: item ? item.idgrupo : 0 } });
                             let nfentradaitem = await db.getModel('est_nfentradaitem').findOne({ where: { id: volume.idnfentradaitem } });
                             let nfentrada = await db.getModel('est_nfentrada').findOne({ where: { id: nfentradaitem ? nfentradaitem.idnfentrada : 0 } });
@@ -2751,6 +2859,7 @@ let main = {
                             let oprecurso_recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso ? oprecurso.idrecurso : 0 } });
                             let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso ? oprecurso.idopetapa : 0 } });
                             let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa ? opetapa.idetapa : 0 } });
+                            let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa ? etapa.idtprecurso : 0 } });
                             let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa ? opetapa.idop : 0 } });
                             let opmae = await db.getModel('pcp_op').findOne({ include: [{ all: true }], where: { id: op && op.idopmae ? op.idopmae : 0 } });
                             let opep = await db.getModel('pcp_opep').findOne({ where: { idop: op ? op.id : 0 } });
@@ -2829,12 +2938,34 @@ let main = {
                                 displayValue: true
                             });
                             report.barcode = canvas.toDataURL();
-                            report.formato = formato.length > 0 ?
-                                etapa && etapa.codigo == 10 ? formato[0].largura + ' x ' + formato[0].espessura :
-                                    etapa && etapa.codigo == 20 ? formato[0].implargura + ' x ' + formato[0].impespessura :
-                                        etapa && (etapa.codigo == 30 || etapa.codigo == 35) ?
-                                            formato[0].larguralam + ' x ' + formato[0].espessuralam : ''
-                                : '';
+                            if (formato.length > 0 && tprecurso) {
+                                if (tpitem.codigo == 16) {
+                                    report.formato = formato[0].largura + ' x ' + formato[0].espessura;
+                                } else if (tprecurso.codigo == 8) {
+                                    let linkcomp = await db.getModel('pcp_apinsumo').findOne({ include: [{ all: true }], where: { recipiente: volume.id.toString() } });
+                                    if (linkcomp) {
+                                        let linkapproducaovolume = await db.getModel('pcp_approducaovolume').findOne({ where: { id: linkcomp.est_volume.idapproducaovolume } });
+                                        let linkapproducao = await db.getModel('pcp_approducao').findOne({ where: { id: linkapproducaovolume ? linkapproducaovolume.idapproducao : 0 } });
+                                        let linkoprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: linkapproducao ? linkapproducao.idoprecurso : 0 } });
+                                        let linkopetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: linkoprecurso ? linkoprecurso.idopetapa : 0 } });
+                                        let linketapa = await db.getModel('pcp_etapa').findOne({ where: { id: linkopetapa ? linkopetapa.idetapa : 0 } });
+                                        if (linketapa) {
+                                            tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: linketapa.idtprecurso } });
+                                        }
+                                    }
+                                }
+                                switch (tprecurso.codigo) {
+                                    case 1:
+                                        report.formato = formato[0].largura + ' x ' + formato[0].espessura;
+                                        break;
+                                    case 2:
+                                        report.formato = formato[0].implargura + ' x ' + formato[0].impespessura;
+                                        break;
+                                    case 3:
+                                        report.formato = formato[0].larguralam + ' x ' + formato[0].espessuralam;
+                                        break;
+                                }
+                            }
                             report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
                             report.op = op ? op.codigo : '';
                             report.opmae = opmae ? opmae.codigo : '';
@@ -5118,17 +5249,18 @@ let main = {
                 }
                 , js_usuarioUltimoAp: async function (obj) {
                     try {
-
                         let oprecurso = null;
                         if ('idoprecurso' in obj.data) {
                             oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
                         } else if ('idapproducao' in obj.data) {
                             let approducao = await db.getModel('pcp_approducao').findOne({ where: { id: obj.data.idapproducao } });
+                            if (!approducao) {
+                                return application.error(obj.res, { msg: 'Apontamento de Produção Inexistente' });
+                            }
                             oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: approducao.idoprecurso } });
                         } else {
-                            return application.error(obj.res, { msg: 'sem id' });
+                            return application.error(obj.res, { msg: 'OOps' });
                         }
-
                         let sql = await db.sequelize.query(`
                             select
                                 x.*
@@ -6756,6 +6888,9 @@ let main = {
                         }
                         if (obj.register.peso <= 0) {
                             return application.error(obj.res, { msg: 'O peso deve ser maior que 0', invalidfields: ['peso'] });
+                        }
+                        if (obj.register.idetapacausa != null && obj.register.idrecursocausa == null) {
+                            return application.error(obj.res, { msg: 'Deve-se informar Etapa Causa e Recurso Causa', invalidfields: ['idrecursocausa'] });
                         }
                         let saved = await next(obj);
                         if (saved.success) {
