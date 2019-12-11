@@ -328,8 +328,8 @@
     </step>
 
   <step>
-    <name>iniflex</name>
-    <type>TableInput</type>
+    <name>Merge Rows &#x28;diff&#x29;</name>
+    <type>MergeRows</type>
     <description/>
     <distribute>Y</distribute>
     <custom_distribution/>
@@ -338,43 +338,23 @@
            <method>none</method>
            <schema_name/>
            </partitioning>
-    <connection>Iniflex</connection>
-    <sql>select codigo, descricao, tipo_recurso, codigo &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; descricao as descricaocompleta from pcpetapa where empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d;</sql>
-    <limit>0</limit>
-    <lookup/>
-    <execute_each_row>N</execute_each_row>
-    <variables_active>Y</variables_active>
-    <lazy_conversion_active>N</lazy_conversion_active>
+    <keys>
+      <key>idtprecurso</key>
+      <key>codigo</key>
+    </keys>
+    <values>
+      <value>descricao</value>
+      <value>descricaocompleta</value>
+    </values>
+<flag_field>flagfield</flag_field>
+<reference>Sort rows 2</reference>
+<compare>Sort rows</compare>
+    <compare>
+    </compare>
      <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>30</xloc>
-      <yloc>26</yloc>
-      <draw>Y</draw>
-      </GUI>
-    </step>
-
-  <step>
-    <name>sip</name>
-    <type>TableInput</type>
-    <description/>
-    <distribute>Y</distribute>
-    <custom_distribution/>
-    <copies>1</copies>
-         <partitioning>
-           <method>none</method>
-           <schema_name/>
-           </partitioning>
-    <connection>SIPv2</connection>
-    <sql>SELECT&#xd;&#xa;  idtprecurso&#xd;&#xa;, descricao&#xd;&#xa;, codigo&#xd;&#xa;, descricaocompleta&#xd;&#xa;FROM pcp_etapa&#xd;&#xa;</sql>
-    <limit>0</limit>
-    <lookup/>
-    <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
-    <lazy_conversion_active>N</lazy_conversion_active>
-     <cluster_schema/>
- <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>30</xloc>
-      <yloc>142</yloc>
+      <xloc>486</xloc>
+      <yloc>88</yloc>
       <draw>Y</draw>
       </GUI>
     </step>
@@ -652,38 +632,6 @@
     </step>
 
   <step>
-    <name>Merge Rows &#x28;diff&#x29;</name>
-    <type>MergeRows</type>
-    <description/>
-    <distribute>Y</distribute>
-    <custom_distribution/>
-    <copies>1</copies>
-         <partitioning>
-           <method>none</method>
-           <schema_name/>
-           </partitioning>
-    <keys>
-      <key>idtprecurso</key>
-      <key>codigo</key>
-    </keys>
-    <values>
-      <value>descricao</value>
-      <value>descricaocompleta</value>
-    </values>
-<flag_field>flagfield</flag_field>
-<reference>Sort rows 2</reference>
-<compare>Sort rows</compare>
-    <compare>
-    </compare>
-     <cluster_schema/>
- <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>486</xloc>
-      <yloc>88</yloc>
-      <draw>Y</draw>
-      </GUI>
-    </step>
-
-  <step>
     <name>Synchronize after merge</name>
     <type>SynchronizeAfterMerge</type>
     <description/>
@@ -695,7 +643,7 @@
            <schema_name/>
            </partitioning>
     <connection>SIPv2</connection>
-    <commit>100</commit>
+    <commit>1500</commit>
     <tablename_in_field>N</tablename_in_field>
     <tablename_field/>
     <use_batch>N</use_batch>
@@ -744,6 +692,58 @@
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
       <xloc>611</xloc>
       <yloc>88</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
+  <step>
+    <name>iniflex</name>
+    <type>TableInput</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+    <connection>Iniflex</connection>
+    <sql>select codigo, descricao, tipo_recurso, codigo &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; descricao as descricaocompleta from pcpetapa where empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d;</sql>
+    <limit>0</limit>
+    <lookup/>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>Y</variables_active>
+    <lazy_conversion_active>N</lazy_conversion_active>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>30</xloc>
+      <yloc>26</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
+  <step>
+    <name>sip</name>
+    <type>TableInput</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+    <connection>SIPv2</connection>
+    <sql>SELECT&#xd;&#xa;  idtprecurso&#xd;&#xa;, descricao&#xd;&#xa;, codigo&#xd;&#xa;, descricaocompleta&#xd;&#xa;FROM pcp_etapa&#xd;&#xa;</sql>
+    <limit>0</limit>
+    <lookup/>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>N</variables_active>
+    <lazy_conversion_active>N</lazy_conversion_active>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>30</xloc>
+      <yloc>142</yloc>
       <draw>Y</draw>
       </GUI>
     </step>

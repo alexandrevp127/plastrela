@@ -647,7 +647,7 @@
            <schema_name/>
            </partitioning>
     <connection>SIPv2</connection>
-    <commit>100</commit>
+    <commit>1500</commit>
     <tablename_in_field>N</tablename_in_field>
     <tablename_field/>
     <use_batch>N</use_batch>
