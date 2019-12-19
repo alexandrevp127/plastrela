@@ -1,0 +1,233 @@
+<style>
+    .plantaitem:hover {
+        background-color: #008eff57;
+    }
+</style>
+
+
+<div class="hidden">
+    {{{hidden}}}
+</div>
+
+<div class="col-md-12">
+    <div class="box box-primary">
+        <div class="box-body">
+            <div id="zgeral" class="row">
+                {{{zgeral}}}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-md-12">
+    <div class="box box-primary">
+        <div class="box-body">
+            <div id="zplanta" style="overflow: hidden;">
+                <img id="imgplanta" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalitem">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="bootbox-close-button close" aria-hidden="true">×</button>
+                <h4 class="modal-title">Ponto</h4>
+            </div>
+            <div class="modal-body">
+                <input id="itemid" type="hidden" />
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Altura*</label>
+                            <input id="itemheight" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Largura*</label>
+                            <input id="itemwidth" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Raio*</label>
+                            <input id="itemradius" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Rotação*</label>
+                            <input id="itemrotation" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Posição Horizontal*</label>
+                            <input id="itempositionx" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Posição Vertical*</label>
+                            <input id="itempositiony" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Componente</label>
+                            <select name="idcomponente" class="form-control select2" style="width:100%;"
+                                data-type="autocomplete" data-model="man_componente" data-attribute="descricao">
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Link</label>
+                            <select name="idlink" class="form-control select2" style="width:100%;"
+                                data-type="autocomplete" data-model="man_plantarecurso" data-attribute="descricao">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="deleteitem" type="button" class="btn btn-danger pull-left"
+                    data-dismiss="modal">Excluir</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Voltar</button>
+                <button id="applyitem" type="button" class="btn btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="hidden">
+    <div id="tplplantaitem" class="plantaitem" style="
+        position:absolute;
+        padding: 0px 2px;
+        cursor: pointer;
+        border: 2px solid red;
+        "></div>
+</div>
+
+<script type="text/javascript">
+    $(function ($) {
+        var $img = $('#imgplanta');
+        var $idcomponente = $('select[name="idcomponente"]');
+        var $idlink = $('select[name="idlink"]');
+        var $planta = $('input[name="planta"]');
+        var $tplplantaitem = $('#tplplantaitem');
+        var $itemid = $('#itemid');
+        var $itemheight = $('#itemheight');
+        var $itemwidth = $('#itemwidth');
+        var $itemradius = $('#itemradius');
+        var $itemrotation = $('#itemrotation');
+        var $itempositionx = $('#itempositionx');
+        var $itempositiony = $('#itempositiony');
+
+        function renderItems() {
+            $('#zplanta').find('.plantaitem').remove();
+            application.jsfunction('plastrela.manutencao.planta.js_getItems', {
+                idplanta: application.functions.getId()
+            }, function (response) {
+                if (response.success) {
+                    for (var i = 0; i < response.data.length; i++) {
+                        const o = JSON.parse(response.data[i].config);
+                        var $clone = $tplplantaitem.clone();
+                        $clone
+                            .attr('data-id', response.data[i].id)
+                            .attr('data-componente', response.data[i].idcomponente ? JSON.stringify({ id: response.data[i].man_componente.id, text: response.data[i].man_componente.descricao }) : '')
+                            .attr('data-link', response.data[i].idlink ? JSON.stringify({ id: response.data[i].link.id, text: response.data[i].link.descricao }) : '')
+                            .attr('data-height', o.height)
+                            .attr('data-width', o.width)
+                            .attr('data-radius', o.radius)
+                            .attr('data-rotation', o.rotation)
+                            .attr('data-positionx', o.positionx)
+                            .attr('data-positiony', o.positiony);
+                        $clone.css('top', o.positiony + 'px');
+                        $clone.css('left', o.positionx + 'px');
+                        $clone.css('width', o.width + 'px');
+                        $clone.css('height', o.height + 'px');
+                        $clone.css('border-radius', o.radius + 'px');
+                        $clone.css('transform', 'rotate(' + o.rotation + 'deg)');
+                        $clone.appendTo($('#zplanta'));
+                    }
+                }
+            });
+        }
+
+        if (application.functions.getId() > 0) {
+            $idlink.attr('data-where', 'id != ' + application.functions.getId());
+            var j = JSON.parse($planta.val());
+            $img.attr('src', '/file/' + j[0].id);
+            $('#zplanta').click(function (e) {
+                if ($(e.target).is('img')) {
+                    $itemid.val('0');
+                    $itemheight.val('30');
+                    $itemwidth.val('30');
+                    $itemradius.val('5');
+                    $itemrotation.val('0');
+                    $itempositionx.val(e.clientX - $('#zplanta').offset().left + window.pageXOffset);
+                    $itempositiony.val(e.clientY - $('#zplanta').offset().top + window.pageYOffset);
+                    $idcomponente.val(null).trigger('change');
+                    $idlink.val(null).trigger('change');
+                    $('#modalitem').modal('show');
+                } else if ($(e.target).hasClass('plantaitem')) {
+                    $el = $(e.target);
+                    $itemid.val($el.attr('data-id'));
+                    $itemheight.val($el.attr('data-height'));
+                    $itemwidth.val($el.attr('data-width'));
+                    $itemradius.val($el.attr('data-radius'));
+                    $itemrotation.val($el.attr('data-rotation'));
+                    $itempositionx.val($el.attr('data-positionx'));
+                    $itempositiony.val($el.attr('data-positiony'));
+                    $idcomponente.children().remove();
+                    var j = JSON.parse($el.attr('data-componente') || '{}');
+                    if (j) {
+                        var newOption = new Option(j.text, j.id, false, false);
+                        $idcomponente.append(newOption).trigger('change');
+                    }
+                    $idlink.children().remove();
+                    j = JSON.parse($el.attr('data-link') || '{}');
+                    if (j) {
+                        var newOption = new Option(j.text, j.id, false, false);
+                        $idlink.append(newOption).trigger('change');
+                    }
+                    $('#modalitem').modal('show');
+                }
+            });
+            renderItems();
+        }
+
+        $('#applyitem').click(function () {
+            application.jsfunction('plastrela.manutencao.planta.js_adicionarItem', {
+                idplanta: application.functions.getId()
+                , id: $itemid.val()
+                , idcomponente: $idcomponente.val()
+                , idlink: $idlink.val()
+                , height: $itemheight.val()
+                , width: $itemwidth.val()
+                , radius: $itemradius.val()
+                , rotation: $itemrotation.val()
+                , positionx: $itempositionx.val()
+                , positiony: $itempositiony.val()
+            }, function (response) {
+                if (response.success) {
+                    renderItems();
+                }
+                $('#modalitem').modal('hide');
+            });
+        });
+
+        $('#deleteitem').click(function () {
+            application.jsfunction('plastrela.manutencao.planta.js_deleteItem', {
+                id: $itemid.val()
+            }, function (response) {
+                if (response.success) {
+                    renderItems();
+                }
+            });
+        });
+    });
+</script>

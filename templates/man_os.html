@@ -1,0 +1,198 @@
+<style>
+    .plantaitem:hover {
+        background-color: #008eff57;
+    }
+</style>
+
+<div id="hidden" class="hidden">
+    {{{hidden}}}
+</div>
+
+<div class="col-md-12">
+    <div class="nav-tabs-custom">
+        <ul class="nav nav-tabs">
+            <li class="active"><a href="#tab_1" data-toggle="tab"> Geral</a></li>
+            <li><a href="#tab_2" data-toggle="tab"> Técnicos</a></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane active" id="tab_1">
+                <div class="row">
+                    <div id="zgeral" class="col-md-8 no-padding">
+                        {{{geral}}}
+                    </div>
+                    <div id="zauxiliar" class="col-md-4 no-padding"
+                        style="height: 300px;border-left: 1px solid #d4d4d4;">
+                        {{{auxiliar}}}
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane" id="tab_2">
+                <div class="row">
+                    {{{tecnico}}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalcomponente">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="bootbox-close-button close" aria-hidden="true">×</button>
+                <h4 class="modal-title">Selecione uma Área</h4>
+            </div>
+            <div class="modal-body" style="padding: 5px;">
+                <div id="zplanta" style="overflow: hidden;">
+                    <img id="imgplanta" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="hidden">
+    <div id="tplplantaitem" class="plantaitem" style="
+            position:absolute;
+            padding: 0px 2px;
+            cursor: pointer;
+            "></div>
+</div>
+
+<script type="text/javascript">
+    $(function ($) {
+        var $idsetor = $('select[name="idsetor"]');
+        var $idrecurso = $('select[name="idrecurso"]');
+        var $idcomponente = $('select[name="idcomponente"]');
+        var $componente = $('input[name="componente"]');
+
+        var $tplplantaitem = $('#tplplantaitem');
+
+        if (application.functions.getId() == 0) {
+            $('#zgeral').removeClass('col-md-8').addClass('col-md-12');
+            $('#zauxiliar').addClass('hidden');
+        }
+
+        function setorHasRecurso() {
+            application.jsfunction('plastrela.manutencao.os.js_setorHasRecurso', { idsetor: $idsetor.val() }, function (response) {
+                if (response.success) {
+                    if (response.data > 0) {
+                        maqComp(true);
+                    } else {
+                        maqComp(false);
+                    }
+                }
+            });
+        }
+
+        $idsetor.change(function () {
+            $idrecurso.val(null).trigger('change');
+            setorHasRecurso();
+        });
+        setorHasRecurso();
+
+        $idrecurso.change(function () {
+            $idcomponente.val(null).trigger('change');
+            $componente.val('');
+        });
+
+        function maqComp(mostra = false) {
+            var $setor = $idsetor.closest('div.form-group').parent();
+            var $divhidden = $('#hidden');
+            if (mostra) {
+                $setor.removeClass('col-md-12').addClass('col-md-4');
+                $idrecurso.closest('div.form-group').parent().insertAfter($setor);
+                $idrecurso.attr('data-where', 'id in (select idrecurso from man_setorrecurso where idsetor = ' + ($idsetor.val() || 0) + ')');
+                $componente.closest('div.form-group').parent().insertAfter($idrecurso.closest('div.form-group').parent());
+                $componente.prop('disabled', false).prop('readonly', true).attr('placeholder', 'Clique para selecionar um componente');
+            } else {
+                $setor.removeClass('col-md-4').addClass('col-md-12');
+                $idrecurso.closest('div.form-group').parent().appendTo($divhidden);
+                $componente.closest('div.form-group').parent().appendTo($divhidden);
+            }
+        }
+
+        maqComp(true);
+
+        $componente.click(function () {
+            if (!$idrecurso.val()) {
+                return application.notify.error('Selecione uma máquina');
+            }
+            application.jsfunction('plastrela.manutencao.os.js_getPlanta', { idrecurso: $idrecurso.val() }, function (response) {
+                if (response.success) {
+                    var img = JSON.parse(response.data.img || '[]');
+                    if (img.length > 0) {
+                        $('#imgplanta').attr('src', '/file/' + img[0].id);
+                        for (var i = 0; i < response.data.items.length; i++) {
+                            const el = response.data.items[i];
+                            const o = JSON.parse(el.config);
+                            var $clone = $tplplantaitem.clone();
+                            $clone
+                                .attr('data-id', el.id)
+                                .attr('data-componente', el.idcomponente ? JSON.stringify({ id: el.man_componente.id, text: el.man_componente.descricao }) : '')
+                                .attr('data-link', el.idlink ? JSON.stringify({ id: el.link.id, text: el.link.descricao }) : '')
+                                .attr('data-height', o.height)
+                                .attr('data-width', o.width)
+                                .attr('data-radius', o.radius)
+                                .attr('data-rotation', o.rotation)
+                                .attr('data-positionx', o.positionx)
+                                .attr('data-positiony', o.positiony);
+                            $clone.css('top', o.positiony + 'px');
+                            $clone.css('left', o.positionx + 'px');
+                            $clone.css('width', o.width + 'px');
+                            $clone.css('height', o.height + 'px');
+                            $clone.css('border-radius', o.radius + 'px');
+                            $clone.css('transform', 'rotate(' + o.rotation + 'deg)');
+                            $clone.appendTo($('#zplanta'));
+                        }
+                    }
+                    $('#modalcomponente').modal('show');
+                }
+            });
+        });
+        $(document).on('click', '.plantaitem', function (e) {
+            var componente = JSON.parse($(e.target).attr('data-componente') || 'null');
+            var link = JSON.parse($(e.target).attr('data-link') || 'null');
+            $componente.val(componente ? componente.text : '');
+            application.functions.setAutocomplete($idcomponente, componente.id, componente.text);
+            if (link) {
+                $('.plantaitem').remove();
+                application.jsfunction('plastrela.manutencao.os.js_getPlanta', { idplanta: link.id }, function (response) {
+                    if (response.success) {
+                        var img = JSON.parse(response.data.img || '[]');
+                        if (img.length > 0) {
+                            $('#imgplanta').attr('src', '/file/' + img[0].id);
+                            for (var i = 0; i < response.data.items.length; i++) {
+                                const el = response.data.items[i];
+                                const o = JSON.parse(el.config);
+                                var $clone = $tplplantaitem.clone();
+                                $clone
+                                    .attr('data-id', el.id)
+                                    .attr('data-componente', el.idcomponente ? JSON.stringify({ id: el.man_componente.id, text: el.man_componente.descricao }) : '')
+                                    .attr('data-link', el.idlink ? JSON.stringify({ id: el.link.id, text: el.link.descricao }) : '')
+                                    .attr('data-height', o.height)
+                                    .attr('data-width', o.width)
+                                    .attr('data-radius', o.radius)
+                                    .attr('data-rotation', o.rotation)
+                                    .attr('data-positionx', o.positionx)
+                                    .attr('data-positiony', o.positiony);
+                                $clone.css('top', o.positiony + 'px');
+                                $clone.css('left', o.positionx + 'px');
+                                $clone.css('width', o.width + 'px');
+                                $clone.css('height', o.height + 'px');
+                                $clone.css('border-radius', o.radius + 'px');
+                                $clone.css('transform', 'rotate(' + o.rotation + 'deg)');
+                                $clone.appendTo($('#zplanta'));
+                            }
+                        }
+                        $('#modalcomponente').modal('show');
+                    }
+                });
+            } else {
+                $('.plantaitem').remove();
+                $('#modalcomponente').modal('hide');
+            }
+        });
+    });
+</script>
