@@ -1794,9 +1794,11 @@ let main = {
                     report.__table = `
                     <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
                         <tr>
-                            <td style="text-align:center;"><strong>Depósito</strong></td>
-                            <td style="text-align:center;"><strong>Produto</strong></td>
-                            <td style="text-align:center;"><strong>Quantidade</strong></td>
+                            <thead>
+                                <td style="text-align:center;"><strong>Depósito</strong></td>
+                                <td style="text-align:center;"><strong>Produto</strong></td>
+                                <td style="text-align:center;"><strong>Quantidade</strong></td>
+                            </thead>
                         </tr>
                     `;
                     for (let i = 0; i < sql.length; i++) {
