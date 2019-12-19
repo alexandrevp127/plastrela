@@ -2403,6 +2403,123 @@ let main = {
                         application.fatal(obj.res, err);
                     }
                 }
+                , js_setorHasRecurso: async (obj) => {
+                    try {
+                        const recs = await db.getModel('man_setorrecurso').findAll({ raw: true, where: { idsetor: obj.data.idsetor || 0 } });;
+                        application.success(obj.res, { data: recs.length });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_encerrar: async (obj) => {
+                    try {
+                        if (obj.ids.length < 1) {
+                            return application.error(obj.res, { msg: application.message.selectOneEvent });
+                        }
+                        await db.getModel('man_os').update({ estado: 'Encerrada' }, { iduser: obj.req.user.id, where: { id: { [db.Op.in]: obj.ids } } });
+                        application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_reabrir: async (obj) => {
+                    try {
+                        if (obj.ids.length < 1) {
+                            return application.error(obj.res, { msg: application.message.selectOneEvent });
+                        }
+                        await db.getModel('man_os').update({ estado: 'Nova' }, { iduser: obj.req.user.id, where: { id: { [db.Op.in]: obj.ids } } });
+                        application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_definirCategoria: async (obj) => {
+                    try {
+                        if (obj.req.method == 'GET') {
+                            if (obj.ids.length != 1) {
+                                return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                            }
+                            let body = '';
+                            body += application.components.html.hidden({ name: 'ids', value: obj.ids.join(',') });
+                            body += application.components.html.autocomplete({
+                                width: '12'
+                                , label: 'Categoria'
+                                , name: 'idcategoria'
+                                , model: 'man_categoria'
+                                , attribute: 'descricao'
+                            });
+                            return application.success(obj.res, {
+                                modal: {
+                                    form: true
+                                    , action: '/event/' + obj.event.id
+                                    , id: 'modalevt'
+                                    , title: obj.event.description
+                                    , body: body
+                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-primary">Definir</button>'
+                                }
+                            });
+                        } else {
+                            const invalidfields = application.functions.getEmptyFields(obj.req.body, ['ids', 'idcategoria']);
+                            if (invalidfields.length > 0) {
+                                return application.error(obj.res, { msg: application.message.invalidfields, invalidfields: invalidfields });
+                            }
+                            await db.getModel('man_os').update({ idcategoria: obj.req.body.idcategoria }, { iduser: obj.req.user.id, where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
+                            application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                        }
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_imprimir: async (obj) => {
+                    try {
+                        const oss = await db.getModel('man_os').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.ids } } });
+                        const reportAll = [];
+                        for (let i = 0; i < oss.length; i++) {
+                            const os = oss[i];
+                            const report = {};
+
+                            report.id = os.id;
+                            report.requisitante = os.requisitante.fullname;
+                            report.responsavel = os.iduserresponsavel ? os.responsavel.fullname : '';
+                            report.setor = os.man_setor.descricao;
+                            report.datahora = application.formatters.fe.datetime(os.datahora);
+                            report.recurso = os.idrecurso ? `${os.pcp_recurso.codigo} - ${os.pcp_recurso.descricao}` : '';
+                            report.tipo = os.tipo;
+                            report.componente = os.idcomponente ? os.man_componente.descricao : '';
+                            report.prioridade = os.prioridade;
+                            report.categoria = os.idcategoria ? os.man_categoria.descricao : '';
+                            report.area = os.area;
+                            report.descricao = os.descricao.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+                            const ostecs = await db.getModel('man_ostecnico').findAll({ include: [{ all: true }], where: { idos: os.id } });
+                            report.tabletecnicos = `
+                            <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                                <tr>
+                                    <td style="text-align:center;"><strong>Técnico</strong></td>
+                                    <td style="text-align:center;"><strong>Data/Hora Inicial</strong></td>
+                                    <td style="text-align:center;"><strong>Data/Hora Final</strong></td>
+                                    <td style="text-align:center;"><strong>Nota</strong></td>
+                                </tr>`;
+                            for (let z = 0; z < ostecs.length; z++) {
+                                const ostec = ostecs[z];
+                                report.tabletecnicos += `
+                                <tr>
+                                    <td style="text-align:center;"> ${ostec.users.fullname} </td>
+                                    <td style="text-align:center;"> ${application.formatters.fe.datetime(ostec.datahoraini)} </td>
+                                    <td style="text-align:center;"> ${application.formatters.fe.datetime(ostec.datahorafim)} </td>
+                                    <td style="text-align:left;">   ${ostec.nota} </td>
+                                </tr>`;
+                            }
+                            report.tabletecnicos += '</table>';
+
+                            reportAll.push(report);
+                        }
+                        const filename = await main.platform.report.f_generate('Manutenção - OS', reportAll);
+                        application.success(obj.res, { openurl: '/download/' + filename });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
             }
             , planta: {
                 js_adicionarItem: async (obj) => {
@@ -2968,6 +3085,8 @@ let main = {
                                         report.formato = '';
                                         break;
                                 }
+                            } else {
+                                report.formato = '';
                             }
                             report.pedido = pedido ? pedido.codigo : opmaepedidoitem ? opmaepedido.codigo : '';
                             report.op = op ? op.codigo : '';
@@ -7405,8 +7524,8 @@ let main = {
                         if (volume.iddeposito != recurso.iddepositoprodutivo) {
                             if (!recurso.permitirApontarDeposito)
                                 return application.error(obj.res, { msg: `Não é possível apontar volumes de outro depósito` });
-                            let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
-                            if ([2, 5].indexOf(item.est_tpitem.codigo) >= 0) {
+                            const item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
+                            if ([2, 5, 13, 14, 16, 17, 18, 19].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
                                     query: `call p_transfere_estoque_integ(${gconfig.cnpj == '90816133000557' ? '1' : '2'}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${recurso.est_deposito.codigo}, '9999', 'TRF'||'${gconfig.cnpj == '90816133000557' ? '1' : '2'}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${gconfig.cnpj == '90816133000557' ? '1' : '2'})`
                                     , integrado: 'N'
@@ -10441,21 +10560,19 @@ let main = {
                         }
                         report.__table += `
                         </tbody>
-                        <tfoot>
-                            <tr style="font-weight: bold;">
-                                <td style="text-align:center;"> TOTAL </td>
-                                <td style="text-align:right;">  ${soma.count} Registros com ${soma.qtditem} Itens Produzidos</td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.qtd, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.peso, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.tempoprod, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.perda, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal((soma.perda / (soma.peso + soma.perda)) * 100, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.parada, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividade / soma.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividademedia / soma.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.time(soma.acerto / soma.cprodutividade)} / ${application.formatters.fe.time(soma.acerto / soma.cacerto)} </td>
-                            </tr>
-                        </tfoot>
+                        <tr style="font-weight: bold;">
+                            <td style="text-align:center;"> TOTAL </td>
+                            <td style="text-align:right;">  ${soma.count} Registros com ${soma.qtditem} Itens Produzidos</td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.qtd, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.peso, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.tempoprod, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.perda, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal((soma.perda / (soma.peso + soma.perda)) * 100, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.parada, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividade / soma.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividademedia / soma.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.time(soma.acerto / soma.cprodutividade)} / ${application.formatters.fe.time(soma.acerto / soma.cacerto)} </td>
+                        </tr>
                         `;
                     }
                     function mostrasomageral() {
@@ -10464,34 +10581,32 @@ let main = {
                         }
                         report.__table += `
                         </tbody>
-                        <tfoot>
-                            <tr style="font-weight: bold;">
-                                <td style="text-align:center;"> TOTAL </td>
-                                <td style="text-align:right;">  ${soma.count} Registros com ${soma.qtditem} Itens Produzidos</td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.qtd, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.peso, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.tempoprod, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.perda, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal((soma.perda / (soma.peso + soma.perda)) * 100, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.parada, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividade / soma.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividademedia / soma.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.time(soma.acerto / soma.cprodutividade)} / ${application.formatters.fe.time(soma.acerto / soma.cacerto)} </td>
-                            </tr>
-                            <tr style="font-weight: bold;">
-                                <td style="text-align:center;"> TOTAL GERAL </td>
-                                <td style="text-align:right;">  ${somageral.count} Registros com ${somageral.qtditem} Itens Produzidos</td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.qtd, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.peso, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.tempoprod, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.perda, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal((somageral.perda / (somageral.peso + somageral.perda)) * 100, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.parada, 2)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.produtividade / somageral.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.produtividademedia / somageral.cprodutividade, 3)} </td>
-                                <td style="text-align:right;"> ${application.formatters.fe.time(somageral.acerto / somageral.cprodutividade)} / ${application.formatters.fe.time(somageral.acerto / somageral.cacerto)} </td>
-                            </tr>
-                        </tfoot>
+                        <tr style="font-weight: bold;">
+                            <td style="text-align:center;"> TOTAL </td>
+                            <td style="text-align:right;">  ${soma.count} Registros com ${soma.qtditem} Itens Produzidos</td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.qtd, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.peso, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.tempoprod, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.perda, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal((soma.perda / (soma.peso + soma.perda)) * 100, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.parada, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividade / soma.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(soma.produtividademedia / soma.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.time(soma.acerto / soma.cprodutividade)} / ${application.formatters.fe.time(soma.acerto / soma.cacerto)} </td>
+                        </tr>
+                        <tr style="font-weight: bold;">
+                            <td style="text-align:center;"> TOTAL GERAL </td>
+                            <td style="text-align:right;">  ${somageral.count} Registros com ${somageral.qtditem} Itens Produzidos</td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.qtd, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.peso, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.tempoprod, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.perda, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal((somageral.perda / (somageral.peso + somageral.perda)) * 100, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.parada, 2)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.produtividade / somageral.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.decimal(somageral.produtividademedia / somageral.cprodutividade, 3)} </td>
+                            <td style="text-align:right;"> ${application.formatters.fe.time(somageral.acerto / somageral.cprodutividade)} / ${application.formatters.fe.time(somageral.acerto / somageral.cacerto)} </td>
+                        </tr>
                         `;
                     }
                     for (let i = 0; i < query.count; i++) {
