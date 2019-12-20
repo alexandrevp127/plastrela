@@ -6424,10 +6424,10 @@ let main = {
                         if (tprecurso.codigo == 8) {
                             if (!obj.register.idopetapa)
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idopetapa'] });
-                            let revopetapa = await db.getModel('pcp_opetapa').findOne({ include: [{ all: true }], where: { id: obj.register.idopetapa } });
-                            if (!revopetapa.pcp_etapa || !revopetapa.pcp_etapa.iddeposito)
-                                return application.error(obj.res, { msg: 'Depósito de destino não configurado no cadastro de Etapas' });
-                            sql.push({ idopetapa: revopetapa.id, iddeposito: revopetapa.pcp_etapa.iddeposito });
+                            const revopetapa = await db.getModel('pcp_opetapa').findOne({ raw: true, where: { id: obj.register.idopetapa } });
+                            if (!etapa.iddeposito)
+                                return application.error(obj.res, { msg: `Depósito de destino não configurado` });
+                            sql.push({ idopetapa: revopetapa.id, iddeposito: etapa.iddeposito });
                         } else {
                             sql = await db.sequelize.query([1].indexOf(tprecurso.codigo) >= 0 ?
                                 `with et as (
