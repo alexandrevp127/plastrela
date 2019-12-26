@@ -9,10 +9,37 @@
 </div>
 
 <div class="col-md-12">
+
+</div>
+
+<div id="divlogin" class="col-md-6 hidden">
+    <div class="box box-primary">
+        <div class="box-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Usuário*</label>
+                        <input id="loginusername" name="loginusername" type="text" class="form-control"
+                            data-type="text">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Senha*</label>
+                        <input id="loginpassword" name="loginpassword" type="password" class="form-control"
+                            data-type="text">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="divmain" class="col-md-12 hidden">
     <div class="nav-tabs-custom">
         <ul class="nav nav-tabs">
             <li class="active"><a href="#tab_1" data-toggle="tab"> Geral</a></li>
-            <li><a href="#tab_2" data-toggle="tab"> Técnicos</a></li>
+            <li><a href="#tab_2" data-toggle="tab"> Notas</a></li>
         </ul>
         <div class="tab-content">
             <div class="tab-pane active" id="tab_1">
@@ -65,6 +92,7 @@
         var $idsetor = $('select[name="idsetor"]');
         var $idrecurso = $('select[name="idrecurso"]');
         var $idcomponente = $('select[name="idcomponente"]');
+        var $iduserleitura = $('select[name="iduserleitura"]');
         var $componente = $('input[name="componente"]');
 
         var $tplplantaitem = $('#tplplantaitem');
@@ -72,6 +100,13 @@
         if (application.functions.getId() == 0) {
             $('#zgeral').removeClass('col-md-8').addClass('col-md-12');
             $('#zauxiliar').addClass('hidden');
+            $('#divmain').removeClass('hidden');
+        } else {
+            if ($iduserleitura.val()) {
+                $('#divmain').removeClass('hidden');
+            } else {
+                $('#divlogin').removeClass('hidden');
+            }
         }
 
         function setorHasRecurso() {
@@ -192,6 +227,24 @@
             } else {
                 $('.plantaitem').remove();
                 $('#modalcomponente').modal('hide');
+            }
+        });
+        $(document).on('keypress', 'input[name*="login"]', function (e) {
+            if (e.which == 13) {
+                application.jsfunction('plastrela.manutencao.os.js_lerOS', {
+                    idos: application.functions.getId()
+                    , user: $('#loginusername').val()
+                    , password: $('#loginpassword').val()
+                }, function (response) {
+                    application.handlers.responseSuccess(response);
+                    if (response.success) {
+                        $('#divlogin').addClass('hidden');
+                        $('#divmain').removeClass('hidden');
+                        application.functions.setAutocomplete($iduserleitura, response.data.id, response.data.text);
+                    }
+                });
+                e.preventDefault();
+                return false;
             }
         });
     });

@@ -9,6 +9,7 @@ const application = require('../../routes/application')
 
 let atv_schedules = [];
 let apontamento_running = 0;
+let man_schedule;
 
 let main = {
     platform: require('../platform.js')
@@ -2266,7 +2267,67 @@ let main = {
             }
         }
         , manutencao: {
-            grupo: {
+            s_agendamento: async () => {
+                try {
+                    const ags = await db.getModel('man_agendamento').findAll();
+                    for (let i = 0; i < ags.length; i++) {
+                        const ag = ags[i];
+                        if (!ag.data_execucao) {
+                            ag.data_execucao = moment();
+                            main.plastrela.manutencao.f_createOS(ag, moment());
+                            ag.save();
+                        } else {
+                            const data_limite = moment(ag.data_execucao, application.formatters.be.date_format).add(ag.periodicidade - (ag.antecipar || 0), 'd');
+                            if (data_limite.diff(moment(), 'd') <= 0) {
+                                const data = moment(ag.data_execucao, application.formatters.be.date_format).add(ag.periodicidade, 'd')
+                                ag.data_execucao = moment();
+                                main.plastrela.manutencao.f_createOS(ag, data);
+                                ag.save();
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , f_createOS: async function (ag, data) {
+                try {
+                    const descricao = ag.descricao.replace(/\${dia}/g, data.format('DD'))
+                        .replace(/\${mes}/g, data.format('MM'))
+                        .replace(/\${ano}/g, data.format('YYYY'))
+                    await db.getModel('man_os').create({
+                        area: ag.area
+                        , iduser: ag.iduser
+                        , datahora: moment()
+                        , datahora_previsao: data
+                        , descricao: descricao
+                        , estado: 'Nova'
+                        , idcategoria: ag.idcategoria
+                        , idsetor: ag.idsetor
+                        , idrecurso: ag.idrecurso
+                        , iduser: ag.iduser
+                        , iduserresponsavel: ag.iduserresponsavel
+                        , prioridade: ag.prioridade
+                        , tipo: ag.tipo
+                    });
+                } catch (err) {
+                    console.error('Erro ao criar OS Agendada', err);
+                }
+            }
+            , agendamento: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (obj.register.id == 0) {
+                            obj.register.iduser = obj.req.user.id;
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
+            , grupo: {
                 onsave: async function (obj, next) {
                     try {
 
@@ -2518,6 +2579,26 @@ let main = {
                         }
                         const filename = await main.platform.report.f_generate('Manutenção - OS', reportAll);
                         application.success(obj.res, { openurl: '/download/' + filename });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_lerOS: async (obj) => {
+                    try {
+                        const user = await db.getModel('users').findOne({
+                            raw: true
+                            , where: {
+                                username: obj.data.user
+                                , password: Cyjs.SHA3(`${application.sk}${obj.data.password}${application.sk}`).toString()
+                            }
+                        });
+                        if (!user) {
+                            return application.error(obj.res, { msg: 'Usuário/Senha inválido' });
+                        }
+                        const os = await db.getModel('man_os').findOne({ where: { id: obj.data.idos } });
+                        os.iduserleitura = user.id;
+                        await os.save({ iduser: user.id });
+                        application.success(obj.res, { msg: application.message.success, data: { id: user.id, text: user.fullname } });
                     } catch (err) {
                         application.fatal(obj.res, err);
                     }
@@ -11825,5 +11906,7 @@ db.sequelize.query("SELECT * FROM atv_atividadeag where ativo", { type: db.seque
         main.atividade.atividadeag.f_ativar(sched);
     });
 });
+
+man_schedule = schedule.scheduleJob('0 0 * * *', main.plastrela.manutencao.s_agendamento);
 
 module.exports = main;

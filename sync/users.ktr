@@ -392,7 +392,7 @@
     <optimizationLevel>9</optimizationLevel>
     <jsScripts>      <jsScript>        <jsScript_type>0</jsScript_type>
         <jsScript_name>Script 1</jsScript_name>
-        <jsScript_script>var fullnamef &#x3d; c_codigosenior &#x2b; &#x27; - &#x27; &#x2b; fullname&#x3b;</jsScript_script>
+        <jsScript_script>var fullnamef &#x3d; fullname &#x2b; &#x27; - &#x27; &#x2b; c_codigosenior&#x3b;</jsScript_script>
       </jsScript>    </jsScripts>    <fields>      <field>        <name>fullnamef</name>
         <rename>fullnamef</rename>
         <type>String</type>
