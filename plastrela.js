@@ -3419,7 +3419,7 @@ let main = {
                                 report.turno = '';
                             }
                             let operador = volume['users.fullname'].split(' - ');
-                            report.operador = (operador.length == 2 ? operador[1] : operador[0]) || '';
+                            report.operador = (operador.length == 2 ? operador[0] : operador[0]) || '';
                             report.dataini = approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
                             report.datafim = approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
 
