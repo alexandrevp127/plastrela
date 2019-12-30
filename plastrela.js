@@ -1844,8 +1844,7 @@ let main = {
                         </table>
                         `;
                         main.platform.mail.f_sendmail({
-                            //to: ['carol@plastrela.com.br', 'edineia@plastrela.com.br', 'dayanac@plastrela.com.br', 'jaque@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
-                            to: ['informatica@plastrela.com.br']
+                            to: ['carol@plastrela.com.br', 'edineia@plastrela.com.br', 'dayanac@plastrela.com.br', 'jaque@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
                             , subject: 'SIP-Configuração Depósitos do Item - Filmes Transferência'
                             , html: `ADEQUAÇÃO: </br></br> 
                                     1- Acessar o cadastro do item no Sistema Iniflex; </br>
