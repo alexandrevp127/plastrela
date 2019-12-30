@@ -1564,6 +1564,304 @@ let main = {
                     console.error(err);
                 }
             }
+            , s_configuracaoDepositosItemIMP: async () => {
+                try {
+                    let needle = require('needle');
+                    let query = null;
+                    query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
+                        function: 'PLAIniflexSQL', param: JSON.stringify([`
+                            select it.codigo, trim(it.descricao) as descricao, u.nome
+                            from estitem it 
+                            left join asdusuario u on (it.usuario_cadastro = u.cpf)
+                            where it.empresa = 1 
+                            and it.descricao like 'IMP-%'
+                            and it.tipo_item in (2)
+                            and ((select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 11 and centro_custo = '102011' and operacao = 'E') = 0
+                            or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 7 and centro_custo = '102005' and operacao = 'E') = 0)
+                            order by it.codigo
+                        `])
+                    });
+                    query = JSON.parse(query.body);
+                    if (query.count > 0) {
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <thead>
+                                <tr>
+                                    <td style="text-align:center;"><strong>Item</strong></td>
+                                    <td style="text-align:center;"><strong>Descrição</strong></td>
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+                        for (let j = 0; j < query.count; j++) {
+                            body += `
+                                <tr>
+                                    <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
+                                    <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
+                                </tr>
+                            `;
+                        }
+                        body += `
+                            </tbody>
+                        </table>
+                        `;
+                        main.platform.mail.f_sendmail({
+                            to: ['pcp@plastrela.com.br', 'pcp02@plastrela.com.br', 'apontamentos@plastrela.com.br', 'pcpms@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
+                            , subject: 'SIP-Configuração Depósitos do Item - IMP'
+                            , html: `ADEQUAÇÃO: </br></br> 
+                                    1- Acessar a tela CAD020-Cadastro de Item no Sistema Iniflex; </br>
+                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósito do Item";</br>
+                                    3- Configurar conforme abaixo:</br></br>
+                                        11  -   Entrada   -   102011  -   Sim </br>    
+                                        7   -   Entrada   -   102005  -   Sim </br>
+                                    </br></br>` + body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , s_configuracaoDepositosItemLAM: async () => {
+                try {
+                    let needle = require('needle');
+                    let query = null;
+                    query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
+                        function: 'PLAIniflexSQL', param: JSON.stringify([`
+                            select it.codigo, trim(it.descricao) as descricao, u.nome
+                            from estitem it 
+                            left join asdusuario u on (it.usuario_cadastro = u.cpf)
+                            where it.empresa = 1 
+                            and it.descricao like 'LAM-%'
+                            and it.tipo_item in (2,5,13,14,16,17,18)
+                            and ((select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 11 and centro_custo = '102011' and operacao = 'E') = 0
+                            or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 8 and centro_custo = '102005' and operacao = 'E') = 0)
+                            order by it.codigo
+                        `])
+                    });
+                    query = JSON.parse(query.body);
+                    if (query.count > 0) {
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <thead>
+                                <tr>
+                                    <td style="text-align:center;"><strong>Item</strong></td>
+                                    <td style="text-align:left;"><strong>Descrição</strong></td>
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+                        for (let j = 0; j < query.count; j++) {
+                            body += `
+                                <tr>
+                                    <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
+                                    <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
+                                </tr>
+                            `;
+                        }
+                        body += `
+                            </tbody>
+                        </table>
+                        `;
+                        main.platform.mail.f_sendmail({
+                            to: ['pcp@plastrela.com.br', 'pcp02@plastrela.com.br', 'apontamentos@plastrela.com.br', 'pcpms@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
+                            , subject: 'SIP-Configuração Depósitos do Item - LAM'
+                            , html: `ADEQUAÇÃO: </br></br> 
+                                    1- Acessar o cadastro do item no Sistema Iniflex; </br>
+                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósito do Item";</br>
+                                    3- Configurar conforme abaixo:</br></br>
+                                        11  -   Entrada   -   102011  -   Sim </br>
+                                        8   -   Entrada   -   102005  -   Sim </br>
+                                    </br></br>` + body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , s_configuracaoDepositosItemLISO: async () => {
+                try {
+                    let needle = require('needle');
+                    let query = null;
+                    query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
+                        function: 'PLAIniflexSQL', param: JSON.stringify([`
+                        select it.empresa, it.codigo, trim(it.descricao) as descricao, u.nome
+                        from estitem it 
+                        left join asdusuario u on (it.usuario_cadastro = u.cpf)
+                        where it.empresa = 1 
+                        and it.tipo_item = 2 
+                        and (it.descricao not like 'IMP-%' and it.descricao not like 'LAM-%')
+                        and ((select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 11 and centro_custo = '102011' and operacao = 'E') = 0
+                        or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito != 11 and centro_custo != '102011' and operacao = 'E') = 0)
+                        order by it.codigo
+                        `])
+                    });
+                    query = JSON.parse(query.body);
+                    if (query.count > 0) {
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <thead>
+                                <tr>
+                                    <td style="text-align:center;"><strong>Item</strong></td>
+                                    <td style="text-align:center;"><strong>Descrição</strong></td>
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+                        for (let j = 0; j < query.count; j++) {
+                            body += `
+                                <tr>
+                                    <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
+                                    <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
+                                </tr>
+                            `;
+                        }
+                        body += `
+                            </tbody>
+                        </table>
+                        `;
+                        main.platform.mail.f_sendmail({
+                            to: ['pcp@plastrela.com.br', 'pcp02@plastrela.com.br', 'apontamentos@plastrela.com.br', 'pcpms@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
+                            , subject: 'SIP-Configuração Depósitos do Item - LISO'
+                            , html: `ADEQUAÇÃO: </br></br> 
+                                    1- Acessar o cadastro do item no Sistema Iniflex; </br>
+                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósito do Item";</br>
+                                    3- Configurar conforme abaixo:</br></br>
+                                        11  -   Entrada   -   102011  -   Sim </br>
+                                        ?   -   Entrada   -   102005  -   Sim </br>
+                                    </br></br>` + body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , s_configuracaoDepositosFilmes3: async () => {
+                try {
+                    let needle = require('needle');
+                    let query = null;
+                    query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
+                        function: 'PLAIniflexSQL', param: JSON.stringify([`
+                        select it.empresa, it.codigo, trim(it.descricao) as descricao, u.nome
+                        from estitem it 
+                        left join asdusuario u on (it.usuario_cadastro = u.cpf)
+                        where it.empresa = 1 
+                        and it.tipo_item in (5,14,16,17,18) 
+                        and it.grupo IN (1,2,504,534,537,543)
+                        and (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 11 and centro_custo = '102011' and operacao = 'E') = 0
+                        order by it.codigo
+                        `])
+                    });
+                    query = JSON.parse(query.body);
+                    if (query.count > 0) {
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <thead>
+                                <tr>
+                                    <td style="text-align:center;"><strong>Item</strong></td>
+                                    <td style="text-align:center;"><strong>Descrição</strong></td>
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+                        for (let j = 0; j < query.count; j++) {
+                            body += `
+                                <tr>
+                                    <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
+                                    <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
+                                </tr>
+                            `;
+                        }
+                        body += `
+                            </tbody>
+                        </table>
+                        `;
+                        main.platform.mail.f_sendmail({
+                            to: ['julio@plastrela.com.br', 'rudimar@plastrela.com.br', 'informatica@plastrela.com.br']
+                            , subject: 'SIP-Configuração Depósitos do Item - Filmes 3º'
+                            , html: `ADEQUAÇÃO: </br></br> 
+                                    1- Acessar o cadastro do item no Sistema Iniflex; </br>
+                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósito do Item";</br>
+                                    3- Configurar conforme abaixo:</br></br>
+                                        11  -   Entrada   -   102011  -   Sim </br>
+                                    </br></br>` + body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            , s_configuracaoDepositosFilmesTransferencia: async () => {
+                try {
+                    let needle = require('needle');
+                    let query = null;
+                    query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
+                        function: 'PLAIniflexSQL', param: JSON.stringify([`
+                        select it.empresa, it.codigo, trim(it.descricao) as descricao, u.nome
+                        from estitem it 
+                        left join asdusuario u on (it.usuario_cadastro = u.cpf)
+                        where it.empresa = 1 
+                        and it.tipo_item in (13) 
+                        and ((select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 11 and centro_custo = '102011' and operacao = 'E') = 0
+                        or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 7 and centro_custo = '102006' and operacao = 'E') = 0
+                        or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 8 and centro_custo = '102009' and operacao = 'E') = 0
+                        or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 9 and centro_custo = '102007' and operacao = 'E') = 0
+                        or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 10 and centro_custo = '102008' and operacao = 'E') = 0)
+                        order by it.codigo
+                        `])
+                    });
+                    query = JSON.parse(query.body);
+                    if (query.count > 0) {
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <thead>
+                                <tr>
+                                    <td style="text-align:center;"><strong>Item</strong></td>
+                                    <td style="text-align:center;"><strong>Descrição</strong></td>
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+                        for (let j = 0; j < query.count; j++) {
+                            body += `
+                                <tr>
+                                    <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
+                                    <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
+                                </tr>
+                            `;
+                        }
+                        body += `
+                            </tbody>
+                        </table>
+                        `;
+                        main.platform.mail.f_sendmail({
+                            to: ['carol@plastrela.com.br', 'edineia@plastrela.com.br', 'dayanac@plastrela.com.br', 'jaque@plastrela.com.br', 'emanuele@plastrela.com.br', 'informatica@plastrela.com.br']
+                            , subject: 'SIP-Configuração Depósitos do Item - Filmes Transferência'
+                            , html: `ADEQUAÇÃO: </br></br> 
+                                    1- Acessar o cadastro do item no Sistema Iniflex; </br>
+                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósito do Item";</br>
+                                    3- Configurar conforme abaixo:</br></br>
+                                        11  -   Entrada   -   102011  -   Sim </br>
+                                         7  -   Entrada   -   102007  -   Sim </br>
+                                         8  -   Entrada   -   102009  -   Sim </br>
+                                         9  -   Entrada   -   102007  -   Sim </br>
+                                        10  -   Entrada   -   102008  -   Sim </br>
+                                    </br></br>` + body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
             , s_configuracaoContabilItem: async () => {
                 try {
                     let empresas = [1, 2];
@@ -1572,13 +1870,14 @@ let main = {
                     for (let i = 0; i < empresas.length; i++) {
                         query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
                             function: 'PLAIniflexSQL', param: JSON.stringify([`
-                            SELECT i.codigo as "ITEM", r.tipo
+                            SELECT i.codigo as "ITEM", i.descricao
                             FROM estitem i 
                             LEFT JOIN estitemctareq r ON (i.empresa = r.empresa AND i.codigo = r.item) 
-                            WHERE i.empresa = ${empresas[i]}  
+                            WHERE i.empresa = 1  
                             AND i.tipo_item = 5
                             AND i.situacao = 'A'
-                            AND i.grupo = 504 
+                            AND i.grupo IN (500, 501, 504, 506)
+                            AND r.historico != 157
                             AND r.tipo != 'AP'
                         `])
                         });
@@ -1589,7 +1888,7 @@ let main = {
                             <thead>
                                 <tr>
                                     <td style="text-align:center;"><strong>Item</strong></td>
-                                    <td style="text-align:center;"><strong>Tipo</strong></td>
+                                    <td style="text-align:center;"><strong>Descrição</strong></td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1598,7 +1897,7 @@ let main = {
                                 body += `
                                 <tr>
                                     <td style="text-align:center;"> ${query.data['ITEM'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['TIPO'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['descricao'][j]} </td>
                                 </tr>
                             `;
                             }
@@ -1613,75 +1912,6 @@ let main = {
                                     1- Acessar o cadastro do item no Sistema Iniflex; </br>
                                     2- Clicar com o botão direito na área cinza e escolher a opção "Conta Contábil";</br>
                                     3- Configurar e no campo Tipo tem que ser "Apontamento"</br></br>` + body
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-            , s_configuracaoDepositoItem: async () => {
-                try {
-                    let empresas = [1, 2];
-                    let needle = require('needle');
-                    let query = null;
-                    for (let i = 0; i < empresas.length; i++) {
-                        query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
-                            function: 'PLAIniflexSQL', param: JSON.stringify([`
-                            SELECT DISTINCT i.codigo as "ITEM", d.deposito, d.operacao, d.centro_custo, d.contabil
-                            FROM estitem i 
-                            LEFT JOIN estitemdeposito d ON (i.empresa = d.empresa AND i.codigo = d.item) 
-                            WHERE i.empresa = ${empresas[i]} 
-                            AND i.tipo_item = 5
-                            AND i.situacao = 'A'
-                            AND i.grupo = 504 
-                            AND d.deposito IS NULL
-                        `])
-                        });
-                        query = JSON.parse(query.body);
-                        if (query.count > 0) {
-                            let body = `
-                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
-                            <thead>
-                                <tr>
-                                    <td style="text-align:center;"><strong>Item</strong></td>
-                                    <td style="text-align:center;"><strong>Depósito</strong></td>
-                                    <td style="text-align:center;"><strong>Operação</strong></td>
-                                    <td style="text-align:center;"><strong>Centro Custo</strong></td>
-                                    <td style="text-align:center;"><strong>Movimenta Contabilidade</strong></td>
-                                </tr>
-                            </thead>
-                            <tbody>
-                        `;
-                            for (let j = 0; j < query.count; j++) {
-                                body += `
-                                <tr>
-                                    <td style="text-align:center;"> ${query.data['ITEM'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['DEPOSITO'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['OPERACAO'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['CENTRO_CUSTO'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['CONTABIL'][j]} </td>
-                                </tr>
-                            `;
-                            }
-                            body += `
-                            </tbody>
-                        </table>
-                        `;
-                            main.platform.mail.f_sendmail({
-                                to: ['julio@plastrela.com.br', 'informatica@plastrela.com.br']
-                                , subject: 'SIP-Configuração Depósitos do Item'
-                                , html: `ADEQUAÇÃO: </br></br> 
-                                    1- Acessar o cadastro do item no Sistema Iniflex; </br>
-                                    2- Clicar com o botão direito na área cinza e escolher a opção "Depósitos do Item";</br>
-                                    3- Configurar conforme abaixo:</br></br>
-                                        1   -   Saída   -   103003  -   Sim </br>
-                                        7   -   Saída   -   102006  -   Sim </br>
-                                        8   -   Saída   -   102009  -   Sim </br>
-                                        9   -   Saída   -   102007  -   Sim </br>
-                                        10  -   Saída   -   102008  -   Sim </br>
-                                        11  -   Saída   -   102011  -   Sim </br>
-                                    </br></br>` + body
                             });
                         }
                     }
@@ -1795,11 +2025,9 @@ let main = {
                     report.__table = `
                     <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
                         <tr>
-                            <thead>
-                                <td style="text-align:center;"><strong>Depósito</strong></td>
-                                <td style="text-align:center;"><strong>Produto</strong></td>
-                                <td style="text-align:center;"><strong>Quantidade</strong></td>
-                            </thead>
+                            <td style="text-align:center;"><strong>Depósito</strong></td>
+                            <td style="text-align:center;"><strong>Produto</strong></td>
+                            <td style="text-align:center;"><strong>Quantidade</strong></td>
                         </tr>
                     `;
                     for (let i = 0; i < sql.length; i++) {
@@ -3190,7 +3418,7 @@ let main = {
                                 report.turno = '';
                             }
                             let operador = volume['users.fullname'].split(' - ');
-                            report.operador = (operador.length == 2 ? operador[1] : operador[0]) || '';
+                            report.operador = (operador.length == 2 ? operador[0] : operador[0]) || '';
                             report.dataini = approducaotempos.length > 0 ? moment(approducaotempos[0].dataini, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
                             report.datafim = approducaotempos.length > 0 ? moment(approducaotempos[approducaotempos.length - 1].datafim, 'YYYY-MM-DD HH:mm').format('DD/MM/YY HH:mm') : '';
 
