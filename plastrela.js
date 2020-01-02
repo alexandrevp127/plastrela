@@ -1293,7 +1293,7 @@ let main = {
                         LEFT JOIN estitem ite on mov.empresa = ite.empresa AND mov.item = ite.codigo 
                         WHERE mov.empresa = ${empresas[i]} 
                         AND ite.tipo_item = 5
-                        AND ite.grupo in (504)
+                        AND ite.grupo in (500,501,504)
                         AND TO_CHAR(mov.data_movto, 'mm') = TO_CHAR(SYSDATE, 'mm')
                         AND TO_CHAR(mov.data_movto, 'yyyy') = TO_CHAR(SYSDATE, 'yyyy')
                         AND mov.valor = 0
@@ -1362,7 +1362,7 @@ let main = {
                         LEFT JOIN estitem ite on mov.empresa = ite.empresa AND mov.item = ite.codigo 
                         WHERE mov.empresa = ${empresas[i]} 
                         AND ite.tipo_item = 5
-                        AND ite.grupo in (504)
+                        AND ite.grupo in (500,501,504)
                         AND TO_CHAR(mov.data_movto, 'mm') = TO_CHAR(SYSDATE, 'mm')
                         AND TO_CHAR(mov.data_movto, 'yyyy') = TO_CHAR(SYSDATE, 'yyyy')
                         AND mov.origem LIKE '%BAL%'
@@ -1430,7 +1430,7 @@ let main = {
                         LEFT JOIN estitem ite on mov.empresa = ite.empresa AND mov.item = ite.codigo 
                         WHERE mov.empresa = ${empresas[i]}
                         AND ite.tipo_item = 5 
-                        AND ite.grupo in (504)
+                        AND ite.grupo in (500,501,504)
                         AND TO_CHAR(mov.data_movto, 'mm') = TO_CHAR(SYSDATE, 'mm')
                         AND TO_CHAR(mov.data_movto, 'yyyy') = TO_CHAR(SYSDATE, 'yyyy')
                         AND mov.tipo_movto IN (1,3,9,10,11)
@@ -1497,7 +1497,7 @@ let main = {
                         SELECT * FROM (SELECT mov.empresa, mov.data_movto, ite.grupo, mov.item, mov.quantidade, mov.valor, mov.origem, mov.tipo_movto, mov.deposito 
                            ,(SELECT COUNT(origem) FROM estmovim 
                                 WHERE empresa = ${empresas[i]} 
-                                AND ite.grupo in (504)
+                                AND ite.grupo in (500,501,504)
                                 AND TO_CHAR(mov.data_movto, 'mm') = TO_CHAR(SYSDATE, 'mm')
                                 AND TO_CHAR(mov.data_movto, 'yyyy') = TO_CHAR(SYSDATE, 'yyyy')
                                 AND origem = mov.origem) as "MOVIMENTOS"
