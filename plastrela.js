@@ -3786,7 +3786,7 @@ let main = {
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
                                 let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volumes[i].pcp_versao.iditem } });
-                                if ((item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
+                                if (([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
                                     await db.getModel('est_integracaotrf').create({
                                         query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 7, 'N', null, null, 2, ${empresa})`
                                         , integrado: 'N'
@@ -5228,7 +5228,7 @@ let main = {
                             requisicoes[i].iduseratendimento = null;
                             requisicoes[i].qtd = null;
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
-                            if (item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
+                            if ([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
                                     query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${requisicoes[i].est_deposito.codigo}, ${requisicoes[i].depositoorigem.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
                                     , integrado: 'N'
