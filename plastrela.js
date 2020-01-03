@@ -2051,6 +2051,48 @@ let main = {
                     console.error(err);
                 }
             }
+            , s_sincronizaFotoSenior: async () => {
+                try {
+                    const sql = require('mssql');
+                    let pool = await sql.connect('mssql://vetorh:vetorh@172.10.30.1/vetorh');
+                    const modelvisitante = await db.getModel('model').findOne({ where: { name: 'prt_visitante' } });
+                    const visitantes = await db.getModel('prt_visitante').findAll({ where: { atividade: { [db.Op.ne]: null } }, order: [['nome', 'asc']] });
+                    for (let i = 0; i < visitantes.length; i++) {
+                        const el = visitantes[i];
+                        console.log('Sincronizando Foto de', el.nome);
+                        if (el.foto) {
+                            const j = JSON.parse(el.foto);
+                            const foto = await db.getModel('file').findOne({ where: { id: j[0].id } });
+                            foto.bounded = false;
+                            await foto.save();
+                        }
+                        const r = await pool.request()
+                            .input('rg', sql.VarChar, el.rg)
+                            .query(`SELECT fot.fotemp FROM r034fun f
+                            left join r034fot fot on (f.numcad = fot.numcad)
+                            left join r034cpl cpl on (f.numcad = cpl.numcad)
+                            where f.numemp = 156 and f.codfil = 3 and f.tipcol = 1 and cpl.numcid = @rg;`);
+                        if (r.recordset.length > 0 && r.recordset[0].fotemp) {
+                            const file = await db.getModel('file').create({
+                                filename: el.rg + '.jpg'
+                                , mimetype: 'image/jpeg'
+                                , size: r.recordset[0].fotemp.byteLength
+                                , type: 'jpg'
+                                , bounded: true
+                                , datetime: moment()
+                                , idmodel: modelvisitante.id
+                                , modelid: el.id
+                                , public: false
+                            });
+                            fs.writeFileSync(application.functions.filesDir() + file.id + '.jpg', r.recordset[0].fotemp);
+                            el.foto = JSON.stringify([file]);
+                            await el.save();
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
         , adm: {
             viagem: {
@@ -3786,7 +3828,7 @@ let main = {
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
                                 let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volumes[i].pcp_versao.iditem } });
-                                if (([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
+                                if (([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 15, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
                                     await db.getModel('est_integracaotrf').create({
                                         query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 7, 'N', null, null, 2, ${empresa})`
                                         , integrado: 'N'
@@ -5228,7 +5270,7 @@ let main = {
                             requisicoes[i].iduseratendimento = null;
                             requisicoes[i].qtd = null;
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
-                            if ([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
+                            if ([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 15, 16].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
                                     query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${requisicoes[i].est_deposito.codigo}, ${requisicoes[i].depositoorigem.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
                                     , integrado: 'N'
@@ -10988,6 +11030,44 @@ let main = {
                     });
                 } catch (err) {
                     return application.fatal(obj.res, err);
+                }
+            }
+        }
+        , portaria: {
+            controlechave: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (!obj.register.iduser_cedente) {
+                            obj.register.iduser_cedente = obj.req.user.id;
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
+            , controleveiculo: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (!obj.register.iduser_cedente) {
+                            obj.register.iduser_cedente = obj.req.user.id;
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
+            , visitante: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (!obj.register.iduser_cedente) {
+                            obj.register.iduser_cedente = obj.req.user.id;
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
                 }
             }
         }
