@@ -5367,12 +5367,14 @@ let main = {
                             report.__title = `Requisições Atendidas</br>${obj.req.body.dataini} até ${obj.req.body.datafim}`;
                             report.__table = `
                             <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
-                                <tr>
-                                    <td style="text-align:center;"><strong>Produto</strong></td>
-                                    <td style="text-align:center;"><strong>IDs</strong></td>
-                                    <td style="text-align:center;"><strong>Etapa</strong></td>
-                                    <td style="text-align:center;"><strong>Quantidade</strong></td>                                    
-                                </tr>
+                                <thead>
+                                    <tr>
+                                        <td style="text-align:center;"><strong>Produto</strong></td>
+                                        <td style="text-align:center;"><strong>IDs</strong></td>
+                                        <td style="text-align:center;"><strong>Etapa</strong></td>
+                                        <td style="text-align:center;"><strong>Quantidade</strong></td>                                    
+                                    </tr>
+                                </thead>
                             `;
                             for (let i = 0; i < sql.length; i++) {
                                 report.__table += `
@@ -11175,7 +11177,7 @@ let main = {
                     if (unidade.cnpj == '90816133000557') {
                         needle.get(`http://172.10.30.70/native/discar.php?dst=${agenda.numero}&src=${ur.src}`, {}, function () { });
                     } else {
-                        needle.get('http://192.168.20.10/native/discar.php?dst=1179&src=7', {}, function () { });
+                        needle.get(`http://192.168.20.10/native/discar.php?dst=${agenda.numero}&src=${ur.src}`, {}, function () { });
                     }
                     application.success(obj.res, { msg: application.message.success });
                 } catch (err) {
