@@ -2024,11 +2024,13 @@ let main = {
                     report.__title = `Inventário Geral`;
                     report.__table = `
                     <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
-                        <tr>
-                            <td style="text-align:center;"><strong>Depósito</strong></td>
-                            <td style="text-align:center;"><strong>Produto</strong></td>
-                            <td style="text-align:center;"><strong>Quantidade</strong></td>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <td style="text-align:center;"><strong>Depósito</strong></td>
+                                <td style="text-align:center;"><strong>Produto</strong></td>
+                                <td style="text-align:center;"><strong>Quantidade</strong></td>
+                            </tr>
+                        </thead>
                     `;
                     for (let i = 0; i < sql.length; i++) {
                         report.__table += `
@@ -4136,10 +4138,8 @@ let main = {
                                     needle.get('http://192.168.20.10/native/discar.php?dst=1179&src=7', {}, function () { });
                                 }
                             }
-
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
-
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -5208,7 +5208,7 @@ let main = {
                         for (let i = 0; i < requisicoes.length; i++) {
                             let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: requisicoes[i].idvolume } });
                             let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volume.pcp_versao.iditem } });
-                            if (item.est_grupo.codigo == 504 && [5, 16].indexOf(item.est_tpitem.codigo) >= 0) {
+                            if ([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 15, 16].indexOf(item.est_tpitem.codigo) >= 0) {
                                 await db.getModel('est_integracaotrf').create({
                                     query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volume.pcp_versao.codigo}', ${volume.qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volume.est_deposito.codigo}, ${requisicoes[i].est_deposito.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volume.pcp_versao.codigo}', ${volume.id}, null, 7, 'N', null, null, 2, ${empresa})`
                                     , integrado: 'N'
@@ -11153,6 +11153,33 @@ let main = {
                 }
                 , f_validadeCurriculos: function () {
                     db.getModel('rh_curriculo').destroy({ where: { validade: { [db.Op.lt]: moment() } } });
+                }
+            }
+        }
+        , telefonia: {
+            e_discar: async (obj) => {
+                try {
+                    if (obj.ids.length <= 0) {
+                        return application.error(obj.res, { msg: application.message.selectOneEvent });
+                    }
+                    const agenda = await db.getModel('tel_agenda').findOne({ where: { id: obj.ids[0] } });
+                    if (!agenda) {
+                        return application.error(obj.res, { msg: 'Contato não encontrado' });
+                    }
+                    const ur = await db.getModel('tel_usuarioramal').findOne({ where: { iduser: obj.req.user.id } });
+                    if (!ur) {
+                        return application.error(obj.res, { msg: 'Ramal não configurado' });
+                    }
+                    const needle = require('needle');
+                    const unidade = await db.getModel('config').findOne();
+                    if (unidade.cnpj == '90816133000557') {
+                        needle.get(`http://172.10.30.70/native/discar.php?dst=${agenda.numero}&src=${ur.src}`, {}, function () { });
+                    } else {
+                        needle.get('http://192.168.20.10/native/discar.php?dst=1179&src=7', {}, function () { });
+                    }
+                    application.success(obj.res, { msg: application.message.success });
+                } catch (err) {
+                    application.fatal(obj.res, err);
                 }
             }
         }
