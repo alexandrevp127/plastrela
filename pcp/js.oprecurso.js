@@ -2,6 +2,7 @@ $(function () {
     var intervalBalanca = null;
     var totalNaoVinculado = 0;
     var rfidurl = 'http://localhost:8082';
+    var run = 0;
     if (application.isRegisterview) {
 
         var $idrecurso = $('select[name="idrecurso"]');
@@ -139,10 +140,10 @@ $(function () {
                         }
                     });
                     $('button#apontar').click(function () {
-                        if ($('button#apontar').attr("disabled") == true) {
+                        if (run > 0) {
                             return;
                         }
-                        $('button#apontar').attr("disabled", true);
+                        run++;
                         application.jsfunction('plastrela.pcp.apinsumo.__apontarVolume', {
                             idoprecurso: application.functions.getId()
                             , iduser: $modal.find('select[name="iduser"]').val()
@@ -180,7 +181,7 @@ $(function () {
                                 }
                                 totalinsumo();
                             }
-                            $('button#apontar').attr("disabled", false);
+                            run--;
                         });
                     });
                     break;
