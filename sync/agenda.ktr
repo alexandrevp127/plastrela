@@ -368,6 +368,11 @@
         <rename>numero</rename>
         <update>Y</update>
       </value>
+      <value>
+        <name>setor</name>
+        <rename>setor</rename>
+        <update>Y</update>
+      </value>
     </lookup>
      <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
@@ -581,7 +586,7 @@
            <schema_name/>
            </partitioning>
     <connection>Senior</connection>
-    <sql>select&#xd;&#xa;	f.numcad&#xd;&#xa;	, f.nomfun as nome&#xd;&#xa;	, cpl.numtel&#xd;&#xa;	, f.codfil&#xd;&#xa;	, &#x24;&#x7b;EMPRESA&#x7d; as empresa&#xd;&#xa;from&#xd;&#xa;	r034fun f&#xd;&#xa;left join r024car c on &#x28;f.codcar &#x3d; c.codcar&#x29;&#xd;&#xa;left join r016orn l on &#x28;f.numloc &#x3d; l.numloc&#x29;&#xd;&#xa;inner join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;where f.numemp &#x3d; 156 and f.sitafa &#x21;&#x3d; 7 and cpl.numtel is not null and cpl.numtel &#x21;&#x3d; &#x27;&#x27; order by f.nomfun</sql>
+    <sql>select&#xd;&#xa;	f.numcad&#xd;&#xa;	, CONCAT&#x28;f.nomfun, &#x27; &#x28;&#x27;, &#x28;case when f.codfil &#x3d; 3 then &#x27;RS&#x27; else &#x27;MS&#x27; end&#x29;, &#x27;&#x29;&#x27;&#x29; as nome&#xd;&#xa;	, cpl.numtel&#xd;&#xa;	, f.codfil&#xd;&#xa;	, l.nomloc as setor&#xd;&#xa;	, &#x24;&#x7b;EMPRESA&#x7d; as empresa&#xd;&#xa;from&#xd;&#xa;	r034fun f&#xd;&#xa;left join r024car c on &#x28;f.codcar &#x3d; c.codcar&#x29;&#xd;&#xa;left join r016orn l on &#x28;f.numloc &#x3d; l.numloc&#x29;&#xd;&#xa;inner join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;where f.numemp &#x3d; 156 and f.sitafa &#x21;&#x3d; 7 and cpl.numtel is not null and cpl.numtel &#x21;&#x3d; &#x27;&#x27; order by f.nomfun</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
