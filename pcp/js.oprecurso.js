@@ -1,7 +1,8 @@
 $(function () {
     var intervalBalanca = null;
     var totalNaoVinculado = 0;
-    var rfidurl = 'http://localhost:8082';
+    var rfidurl = 'http://localhost:8081';
+    var balancaurl = 'http://localhost:8082';
     var run = 0;
     if (application.isRegisterview) {
 
@@ -60,7 +61,7 @@ $(function () {
                     });
                     intervalBalanca = setInterval(function () {
                         $.ajax({
-                            url: 'http://172.10.30.115:8082'
+                            url: balancaurl
                             , type: 'GET'
                             , dataType: 'json'
                             , success: function (response) {
