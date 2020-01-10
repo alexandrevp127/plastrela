@@ -7343,13 +7343,28 @@ let main = {
                         let volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
                         let needle = require('needle');
                         while (true) {
-                            await needle('get', 'http://localhost:8082/write/' + volume.id);
-                            let volid = parseInt((await needle('get', 'http://localhost:8082/read')).body);
+                            await needle('get', 'http://172.10.30.115:8081/write/' + volume.id);
+                            let volid = parseInt((await needle('get', 'http://172.10.30.115:8081/read')).body);
                             if (volid == volume.id) {
                                 break;
                             }
                         }
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        return application.fatal(obj.res, err);
+                    }
+                }
+                , e_verificarConsumos: async (obj) => {
+                    try {
+                        if (obj.ids.length != 1) {
+                            return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                        }
+                        const volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
+                        if (!volume) {
+                            return application.error(obj.res, { msg: 'Volume não encontrado' });
+                        }
+                        obj.ids = [volume.id];
+                        main.plastrela.estoque.est_volume.e_verificarConsumos(obj);
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
