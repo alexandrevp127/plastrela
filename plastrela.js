@@ -3830,7 +3830,7 @@ let main = {
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
                                 let item = await db.getModel('cad_item').findOne({ include: [{ all: true }], where: { id: volumes[i].pcp_versao.iditem } });
-                                if (([500, 501, 504, 506].indexOf(item.est_grupo.codigo) >= 0 && [5, 15, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
+                                if (([500, 501, 504, 506, 534].indexOf(item.est_grupo.codigo) >= 0 && [2, 5, 15, 16].indexOf(item.est_tpitem.codigo) >= 0) || depdestino.codigo == 15) {
                                     await db.getModel('est_integracaotrf').create({
                                         query: `call p_transfere_estoque_integ(${empresa}, '${item.codigo}', '${volumes[i].pcp_versao.codigo}', ${volumes[i].qtdreal}, '${moment().format(application.formatters.fe.date_format)}', ${volumes[i].est_deposito.codigo}, ${depdestino.codigo}, '9999', 'TRF'||'${empresa}'||'#'||'${moment().format(application.formatters.fe.datetime_format)}:00'||'#'||'${item.codigo}'||'#'||'${volumes[i].pcp_versao.codigo}', ${volumes[i].id}, null, 7, 'N', null, null, 2, ${empresa})`
                                         , integrado: 'N'
@@ -4925,7 +4925,7 @@ let main = {
                                 return application.error(obj.res, { msg: 'Não é possível excluir reservas que foram apontadas' });
                             }
                             if (reservas[i].idprerequisicao) {
-                                let prerequisicao = await db.getModel('est_prerequisicao').findOne({ where: { id: reservas[i].idprerequisicao } });
+                                let prerequisicao = await db.getModel('est_prerequisicao').findOne({ where: { id: reservas[i].idprerequisicao }, transaction: obj.transaction });
                                 prerequisicao.qtdrestante += reservas[i].qtd;
                                 await prerequisicao.save({ iduser: obj.req.user.id, transaction: obj.transaction });
                             }
@@ -5457,8 +5457,8 @@ let main = {
                                 if (prerequisicao[i].idversao != volume.idversao) {
                                     return application.error(obj.res, { msg: 'Devem ser selecionados apenas produtos iguais para Definir Volume' });
                                 }
-                                if (prerequisicao[i].qtdrestante == 0) {
-                                    return application.error(obj.res, { msg: 'Devem ser selecionados apenas produtos iguais para Definir Volume' });
+                                if (prerequisicao[i].qtdrestante <= 0) {
+                                    return application.error(obj.res, { msg: 'Não existe mais quantidade para ser reservado' });
                                 }
                             }
 
@@ -5477,20 +5477,22 @@ let main = {
                                 let op = await db.getModel('pcp_op').findOne({ raw: true, where: { id: opetapa.idop } });
                                 let opep = await db.getModel('pcp_opep').findOne({ raw: true, where: { idop: op.id } });
                                 let pedidoitem = await db.getModel('ven_pedidoitem').findOne({ raw: true, where: { idpedido: opep ? opep.idpedido : 0, idversao: op.idversao } });
-                                prerequisicao[i].qtdrestante = prerequisicao[i].qtdrestante - qtddisponivel;
-                                if (prerequisicao[i].qtdrestante < 0)
-                                    prerequisicao[i].qtdrestante = 0;
-                                await prerequisicao[i].save({ iduser: obj.req.user.id, transaction: t });
+                                const qtdreservado = qtddisponivel > prerequisicao[i].qtdrestante ? prerequisicao[i].qtdrestante : qtddisponivel;
                                 await db.getModel('est_volumereserva').create({
                                     idopetapa: opetapa.id
                                     , apontado: false
                                     , idvolume: volume.id
                                     , idpedidoitem: pedidoitem ? pedidoitem.id : null
-                                    , qtd: qtddisponivel > prerequisicao[i].qtdrestante ? prerequisicao[i].qtdrestante : qtddisponivel
+                                    , qtd: qtdreservado
                                     , idop: op.id
                                     , idprerequisicao: prerequisicao[i].id
                                 }, { iduser: obj.req.user.id, transaction: t });
-                                qtddisponivel -= prerequisicao[i].qtdrestante;
+                                qtddisponivel -= qtdreservado;
+                                prerequisicao[i].qtdrestante -= qtdreservado;
+                                if (prerequisicao[i].qtdrestante <= 0) {
+                                    prerequisicao[i].qtdrestante = 0;
+                                }
+                                await prerequisicao[i].save({ iduser: obj.req.user.id, transaction: t });
                             }
                             await t.commit();
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
@@ -5498,6 +5500,77 @@ let main = {
                     } catch (err) {
                         t.rollback();
                         return application.fatal(obj.res, err);
+                    }
+                }
+                , e_gerarRequisicao: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.ids.length <= 0) {
+                            return application.error(obj.res, { msg: application.message.selectOneEvent });
+                        }
+                        const prerequisicao = await db.getModel('est_prerequisicao').findAll({ where: { id: { [db.Op.in]: obj.ids } }, order: [['datahoraentregar', 'asc']] });
+                        const idsvolume = [];
+                        t = await db.sequelize.transaction();
+                        for (let i = 0; i < prerequisicao.length; i++) {
+                            if (prerequisicao[i].requisitado || prerequisicao[i].qtdrestante == prerequisicao[i].qtd) continue;
+                            const vr = await db.getModel('est_volumereserva').findOne({ where: { idprerequisicao: prerequisicao[i].id } });
+                            if (vr && idsvolume.indexOf(vr.idvolume) < 0) {
+                                idsvolume.push(vr.idvolume);
+                                const requisicao = await db.getModel('est_requisicaovolume').findOne({ transaction: t, where: { idvolume: vr.idvolume, datahoraatendido: { [db.Op.is]: null } } });
+                                if (!requisicao) {
+                                    await db.getModel('est_requisicaovolume').create({
+                                        idvolume: vr.idvolume
+                                        , iddeposito: prerequisicao[i].iddeposito
+                                        , iduser: obj.req.user.id
+                                        , datahora: prerequisicao[i].datahoraentregar
+                                    }, { iduser: obj.req.user.id, transaction: t });
+                                }
+                            }
+                            prerequisicao[i].requisitado = true;
+                            await prerequisicao[i].save({ iduser: obj.req.user.id, transaction: t });
+                        }
+                        await t.commit();
+                        application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        t.rollback();
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_desfazer: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.ids.length <= 0) {
+                            return application.error(obj.res, { msg: application.message.selectOneEvent });
+                        }
+                        const prerequisicao = await db.getModel('est_prerequisicao').findAll({ where: { id: { [db.Op.in]: obj.ids } } });
+                        t = await db.sequelize.transaction();
+                        for (let i = 0; i < prerequisicao.length; i++) {
+                            const vrs = await db.getModel('est_volumereserva').findAll({ transaction: t, where: { idprerequisicao: prerequisicao[i].id } });
+                            for (let z = 0; z < vrs.length; z++) {
+                                const volume = await db.getModel('est_volume').findOne({ raw: true, transaction: t, where: { id: vrs[z].idvolume } }); if (!volume) continue;
+                                const depvolume = await db.getModel('est_deposito').findOne({ raw: true, transaction: t, where: { id: volume.iddeposito } }); if (!depvolume) continue;
+                                if ([5].indexOf(depvolume.codigo) < 0) {
+                                    t.rollback();
+                                    return application.error(obj.res, { msg: `Não é possível desfazer esta reserva pois o volume ${volume.id} não se encontra no almoxarifado` });
+                                }
+                                await vrs[z].destroy({ iduser: obj.req.user.id, transaction: t });
+                                const requisicao = await db.getModel('est_requisicaovolume').findOne({ transaction: t, where: { idvolume: volume.id, datahoraatendido: { [db.Op.is]: null } } });
+                                if (requisicao) {
+                                    const reservas = await db.getModel('est_volumereserva').findOne({ transaction: t, where: { idvolume: volume.id, apontado: false } });
+                                    if (!reservas) {
+                                        await requisicao.destroy({ iduser: obj.req.user.id, transaction: t });
+                                    }
+                                }
+                            }
+                            prerequisicao[i].requisitado = false;
+                            prerequisicao[i].qtdrestante = prerequisicao[i].qtd;
+                            await prerequisicao[i].save({ iduser: obj.req.user.id, transaction: t });
+                        }
+                        await t.commit();
+                        application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        t.rollback();
+                        application.fatal(obj.res, err);
                     }
                 }
             }
@@ -9132,10 +9205,17 @@ let main = {
                             let body = '';
                             body += application.components.html.hidden({ name: 'ids', value: obj.ids.join(',') });
                             body += application.components.html.datetime({
-                                width: 12
+                                width: 6
                                 , name: `datahoraentregar`
                                 , label: 'Data/Hora para Entregar'
                                 , value: moment().format(application.formatters.fe.datetime_format)
+                            });
+                            body += application.components.html.autocomplete({
+                                width: 6
+                                , name: `iddeposito`
+                                , label: 'Depósito*'
+                                , model: 'est_deposito'
+                                , attribute: 'descricao'
                             });
                             for (let i = 0; i < oprecurso.length; i++) {
                                 let opetapa = await db.getModel('pcp_opetapa').findOne({ raw: true, where: { id: oprecurso[i].idopetapa } });
@@ -9165,7 +9245,7 @@ let main = {
                                 }
                             });
                         } else {
-                            let invalidfields = application.functions.getEmptyFields(obj.req.body, ['ids', 'datahoraentregar']);
+                            let invalidfields = application.functions.getEmptyFields(obj.req.body, ['ids', 'datahoraentregar', 'iddeposito']);
                             if (invalidfields.length > 0) {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                             }
@@ -9194,6 +9274,7 @@ let main = {
                                         , idoprecurso: oprecurso.id
                                         , qtd: parseFloat(componentes[z].qtd).toFixed(4)
                                         , qtdrestante: parseFloat(componentes[z].qtd).toFixed(4)
+                                        , iddeposito: obj.req.body.iddeposito
                                         , requisitado: false
                                     }, { transaction: t });
                                 }
