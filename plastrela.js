@@ -4892,6 +4892,75 @@ let main = {
                         return application.fatal(obj.res, err);
                     }
                 }
+                , e_desmembrar: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.req.method == 'GET') {
+                            if (obj.ids.length != 1) {
+                                return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                            }
+                            let body = '';
+                            body += application.components.html.hidden({
+                                name: 'idvolume'
+                                , value: obj.ids[0]
+                            });
+                            body += application.components.html.decimal({
+                                width: '12'
+                                , label: 'Quantidade a Desmembrar*'
+                                , name: 'qtd'
+                                , precision: 4
+                            });
+                            application.success(obj.res, {
+                                modal: {
+                                    form: true
+                                    , action: '/event/' + obj.event.id
+                                    , id: 'modalevt' + obj.event.id
+                                    , title: obj.event.description
+                                    , body: body
+                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-primary">Desmembrar</button>'
+                                }
+                            });
+                        } else {
+                            const invalidfields = application.functions.getEmptyFields(obj.req.body, ['idvolume', 'qtd']);
+                            if (invalidfields.length > 0) {
+                                return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
+                            }
+                            const qtd = application.formatters.be.decimal(obj.req.body.qtd);
+                            if (qtd <= 0) {
+                                return application.error(obj.res, { msg: 'A quantidade deve ser maior que 0' });
+                            }
+                            const volume = await db.getModel('est_volume').findOne({ where: { id: obj.req.body.idvolume } });
+                            if (volume.consumido) {
+                                return application.error(obj.res, { msg: 'O volume está consumido' });
+                            }
+                            if (qtd >= volume.qtdreal) {
+                                return application.error(obj.res, { msg: 'A quantidade deve ser menor que a quantidade em estoque do volume' });
+                            }
+                            volume.qtdreal -= qtd;
+                            t = await db.sequelize.transaction();
+                            const newv = await db.getModel('est_volume').create({
+                                idversao: volume.idversao
+                                , consumido: false
+                                , datahora: moment()
+                                , datavalidade: volume.datavalidade
+                                , iddeposito: volume.iddeposito
+                                , iddepositoendereco: volume.iddepositoendereco
+                                , iduser: obj.req.user.id
+                                , lote: volume.lote
+                                , metragem: volume.metragem
+                                , observacao: `Desmembrado do ID:${volume.id}`
+                                , qtd: qtd
+                                , qtdreal: qtd
+                            }, { iduser: obj.req.user.id, transaction: t });
+                            await volume.save({ iduser: obj.req.user.id, transaction: t });
+                            await t.commit();
+                            application.success(obj.res, { msg: `Gerado ID ${newv.id}`, reloadtables: true });
+                        }
+                    } catch (err) {
+                        t.rollback();
+                        application.fatal(obj.res, err);
+                    }
+                }
             }
             , volumereserva: {
                 onsave: async function (obj, next) {
