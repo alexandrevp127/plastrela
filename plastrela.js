@@ -8744,8 +8744,8 @@ let main = {
             }
             , oprecurso: {
                 onsave: async function (obj, next) {
+                    const config = await db.getModel('pcp_config').findOne();
                     if (obj.id == 0) {
-                        let config = await db.getModel('pcp_config').findOne();
                         if (config && config.idestadoinicial) {
                             obj.register.idestado = config.idestadoinicial;
                             await next(obj);
@@ -8753,12 +8753,13 @@ let main = {
                             return application.error(obj.res, { msg: 'Falta configuração em: Estado Inicial da OP' });
                         }
                     } else {
-
-                        let apparada = await db.getModel('pcp_apparada').findOne({ where: { idoprecurso: obj.register.id } });
+                        if (obj.register.idestado == config.idestadoencerrada) {
+                            return application.error(obj.res, { msg: 'OP está encerrada' });
+                        }
+                        const apparada = await db.getModel('pcp_apparada').findOne({ where: { idoprecurso: obj.register.id } });
                         if (obj.register.idrecurso != obj.register._previousDataValues.idrecurso && apparada) {
                             return application.error(obj.res, { msg: 'Não é possível alterar a máquina de uma OP com apontamentos' });
                         }
-
                         await next(obj);
                     }
                 }
