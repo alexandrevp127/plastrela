@@ -733,7 +733,7 @@
            <schema_name/>
            </partitioning>
     <connection>SIPv2</connection>
-    <sql>SELECT&#xd;&#xa;  seq&#xd;&#xa;, idop&#xd;&#xa;, idetapa&#xd;&#xa;FROM pcp_opetapa</sql>
+    <sql>SELECT&#xd;&#xa;  ope.seq&#xd;&#xa;, ope.idop&#xd;&#xa;, ope.idetapa&#xd;&#xa;FROM pcp_opetapa ope&#xd;&#xa;left join pcp_op op on &#x28;ope.idop &#x3d; op.id&#x29;&#xd;&#xa;where op.codigo &#x21;&#x3d; &#x27;9999999&#x27;</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>

@@ -852,7 +852,7 @@
            <schema_name/>
            </partitioning>
     <connection>SIPv2</connection>
-    <sql>select &#x2a; from pcp_op</sql>
+    <sql>select &#x2a; from pcp_op where codigo &#x21;&#x3d; &#x27;9999999&#x27;</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
