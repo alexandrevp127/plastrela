@@ -81,7 +81,7 @@ let main = {
                             for (let i = 0; i < cds.length; i++) {
                                 let atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
                                 if (!atvcd) {
-                                    await db.getModel('atv_atividade_cd').create({ idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id });
+                                    await db.getModel('atv_atividade_cd').create({ idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id }, { iduser: obj.req.user.id });
                                     atvcd = await db.getModel('atv_atividade_cd').findOne({ include: [{ all: true }], where: { idatividade: saved.register.id, idcampodinamico: cds[i].atv_campodinamico.id } });
                                 }
                                 if (obj.req.body['cd' + cds[i].idcampodinamico]) {
@@ -228,7 +228,7 @@ let main = {
                         idatividade: atividade.id
                         , iduser: obj.req.user.id
                         , datahoraini: moment()
-                    });
+                    }, { iduser: obj.req.user.id });
                     if (atividade.idstatus != statusemandamento.idstatus) {
                         atividade.idstatus = statusemandamento.idstatus;
                         await atividade.save({ iduser: obj.req.user.id });
@@ -331,12 +331,12 @@ let main = {
                         , anexos: obj.data.anexos
                         , tempo: obj.data.tempo == '' ? null : application.formatters.be.time(obj.data.tempo)
                         , privada: privada
-                    });
+                    }, { iduser: obj.req.user.id });
                     let anexos = JSON.parse(obj.data.anexos || '[]');
                     if (anexos.length > 0) {
                         let modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividadenota' } });
                         for (let i = 0; i < anexos.length; i++) {
-                            db.getModel('file').update({ idmodel: modelatv.id, modelid: atvnota.id, public: false, bounded: true }, { where: { id: anexos[i].id } });
+                            db.getModel('file').update({ idmodel: modelatv.id, modelid: atvnota.id, public: false, bounded: true }, { where: { id: anexos[i].id }, iduser: obj.req.user.id });
                         }
                     }
                     let atvemandamento = await db.getModel('atv_atividadetempo').findOne({ where: { idatividade: atividade.id, iduser: obj.req.user.id, datahorafim: null } });
@@ -698,14 +698,14 @@ let main = {
                         }
                         matv.assunto = replaces(matv.assunto);
                         matv.descricao = replaces(matv.descricao);
-                        let atividade = await db.getModel('atv_atividade').create(matv);
+                        let atividade = await db.getModel('atv_atividade').create(matv, { iduser: obj.req.user.id });
                         let atvagcds = await db.getModel('atv_atividadeag_cd').findAll({ where: { idatividadeag: atividadeag.id } });
                         for (let i = 0; i < atvagcds.length; i++) {
                             await db.getModel('atv_atividade_cd').create({
                                 idatividade: atividade.id
                                 , idcampodinamico: atvagcds[i].idcampodinamico
                                 , valor: atvagcds[i].valor
-                            });
+                            }, { iduser: obj.req.user.id });
                         }
                         if (atividade.iduser_responsavel) {
                             main.platform.notification.create([atividade.iduser_responsavel], {
@@ -963,7 +963,7 @@ let main = {
                             , pausada: false
                             , cancelada: false
                             , final: false
-                        });
+                        }, { iduser: obj.req.user.id });
                     }
                 } catch (err) {
                     return application.fatal(obj.res, err);
@@ -1004,6 +1004,13 @@ let main = {
                         let atividade = await db.getModel('atv_atividade').findOne({ include: [{ all: true }], where: { id: id } });
                         let user = await db.getModel('users').findOne({ where: { email: email.from[0].address } });
                         if (atividade) {
+                            if (atividade.encerrada) {
+                                let status_inicial = await db.getModel('atv_tipo_status').findOne({ where: { idtipo: atividade.idtipo, inicial: true } });
+                                if (status_inicial) {
+                                    atividade.idstatus = status_inicial.id;
+                                    atividade.save();
+                                }
+                            }
                             let nota = await db.getModel('atv_atividadenota').create({
                                 idatividade: atividade.id
                                 , datahora: moment()
@@ -1897,7 +1904,7 @@ let main = {
                                 body += `
                                 <tr>
                                     <td style="text-align:center;"> ${query.data['ITEM'][j]} </td>
-                                    <td style="text-align:center;"> ${query.data['descricao'][j]} </td>
+                                    <td style="text-align:center;"> ${query.data['DESCRICAO'][j]} </td>
                                 </tr>
                             `;
                             }
@@ -2133,7 +2140,7 @@ let main = {
                                 idviagem: obj.data.id,
                                 datahoraini: application.formatters.be.datetime(obj.data.datahora),
                                 observacao: obj.data.observacao || null
-                            });
+                            }, { iduser: obj.req.user.id });
                         }
 
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
@@ -2398,7 +2405,7 @@ let main = {
                                 datadesejada: solicitacaoitem.datadesejada,
                                 datainclusao: moment(),
                                 qtd: qtd.toFixed(4)
-                            });
+                            }, { iduser: obj.req.user.id });
 
                             solicitacaoitem.qtd = (parseFloat(solicitacaoitem.qtd) - qtd).toFixed(4);
                             await solicitacaoitem.save({ iduser: obj.req.user.id });
@@ -2877,7 +2884,84 @@ let main = {
                 }
             }
             , planta: {
-                js_adicionarItem: async (obj) => {
+                e_clonar: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.req.method == 'GET') {
+                            if (obj.ids.length != 1) {
+                                return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                            }
+                            let body = '';
+                            body += application.components.html.hidden({
+                                name: 'id'
+                                , value: obj.ids[0]
+                            });
+                            body += application.components.html.text({
+                                width: 12
+                                , label: 'Descrição*'
+                                , name: 'descricao'
+                            });
+                            return application.success(obj.res, {
+                                modal: {
+                                    form: true
+                                    , action: '/event/' + obj.event.id
+                                    , id: 'modalevt'
+                                    , title: obj.event.description
+                                    , body: body
+                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-primary">Clonar</button>'
+                                }
+                            });
+                        } else {
+                            const invalidfields = application.functions.getEmptyFields(obj.req.body, ['id', 'descricao']);
+                            if (invalidfields.length > 0) {
+                                return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
+                            }
+                            const planta = await db.getModel('man_plantarecurso').findOne({ where: { id: obj.req.body.id } });
+                            if (!planta) {
+                                return application.error(obj.res, { msg: 'Planta não encontrada' });
+                            }
+                            if (!planta.planta) {
+                                return application.error(obj.res, { msg: 'A Planta não possui arquivo' });
+                            }
+                            const file = await db.getModel('file').findOne({ where: { id: JSON.parse(planta.planta)[0].id } })
+                            const items = await db.getModel('man_plantarecursoitem').findAll({ where: { idplantarecurso: planta.id } });
+                            t = await db.sequelize.transaction();
+                            const newfile = await db.getModel('file').create({
+                                bounded: true
+                                , datetime: moment()
+                                , filename: file.filename
+                                , idmodel: file.idmodel
+                                , iduser: obj.req.user.id
+                                , mimetype: file.mimetype
+                                , public: file.public
+                                , size: file.size
+                                , type: file.type
+                            }, { transaction: t, iduser: obj.req.user.id });
+                            const newplanta = await db.getModel('man_plantarecurso').create({
+                                descricao: obj.req.body.descricao
+                                , planta: JSON.stringify([newfile])
+                            }, { transaction: t, iduser: obj.req.user.id });
+                            newfile.modelid = newplanta.id;
+                            await newfile.save({ transaction: t, iduser: obj.req.user.id });
+                            fs.copyFileSync(`${application.functions.filesDir()}${file.id}.${file.type}`, `${application.functions.filesDir()}${newfile.id}.${newfile.type}`);
+                            for (let i = 0; i < items.length; i++) {
+                                await db.getModel('man_plantarecursoitem').create({
+                                    idplantarecurso: newplanta.id
+                                    , idcomponente: items[i].idcomponente
+                                    , idlink: items[i].idlink
+                                    , config: items[i].config
+                                }, { transaction: t, iduser: obj.req.user.id });
+                            }
+                            await t.commit();
+                            application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                        }
+                    } catch (err) {
+                        if (t)
+                            t.rollback();
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_adicionarItem: async (obj) => {
                     try {
                         const planta = await db.getModel('man_plantarecurso').findOne({ where: { id: obj.data.idplanta || 0 } });
                         if (!planta)
@@ -3015,7 +3099,7 @@ let main = {
                             , razaosocial: spednf.nome_emitente
                             , datainclusao: moment()
                             , iddeposito: obj.req.body.deposito
-                        });
+                        }, { iduser: obj.req.user.id });
 
                         let bulkitens = [];
                         for (let i = 0; i < spednfitem.length; i++) {
@@ -3141,7 +3225,7 @@ let main = {
                                                     , idopetapa: solicitacaoitem[y].idopetapa
                                                     , qtd: pesorestante.toFixed(4)
                                                     , apontado: false
-                                                }));
+                                                }, { iduser: obj.req.user.id }));
                                             }
                                             solicitacaoitem[y].qtdrecebida = parseFloat(solicitacaoitem[y].qtdrecebida || 0) + pesorestante;
                                             pesorestante = 0;
@@ -3154,7 +3238,7 @@ let main = {
                                                     , idopetapa: solicitacaoitem[y].idopetapa
                                                     , qtd: qtd.toFixed(4)
                                                     , apontado: false
-                                                }));
+                                                }, { iduser: obj.req.user.id }));
                                             }
                                             solicitacaoitem[y].qtdrecebida = parseFloat(solicitacaoitem[y].qtdrecebida || 0) + qtd;
                                         }
@@ -3305,16 +3389,12 @@ let main = {
 
                 _imprimirEtiqueta: async function (obj) {
                     try {
-
                         let f = application.functions;
-
                         if (obj.ids.length == 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-
                         let reportAll = [];
-
-                        let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }], raw: true });
+                        let volumes = await db.getModel('est_volume').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }], raw: true, order: [['id', 'asc']] });
                         for (let i = 0; i < volumes.length; i++) {
                             let volume = volumes[i];
                             let report = {};
@@ -3612,7 +3692,7 @@ let main = {
                                     , idnfentradaitem: nfitem.id
                                     , lote: obj.req.body.lote
                                     , datavalidade: obj.req.body.datavalidade ? application.formatters.be.date(obj.req.body.datavalidade) : null
-                                });
+                                }, { iduser: obj.req.user.id });
 
                                 let results = await db.sequelize.query(`
                                     select
@@ -3825,7 +3905,7 @@ let main = {
                             let changes = { iddeposito: obj.req.body.iddeposito, iddepositoendereco: null };
                             let depdestino = await db.getModel('est_deposito').findOne({ where: { id: obj.req.body.iddeposito } });
                             let volumes = await db.getModel('est_volume').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
-                            await db.getModel('est_volume').update(changes, { transaction: t, where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } }, iduser: obj.req.user.id });
+                            await db.getModel('est_volume').update(changes, { iduser: obj.req.user.id, transaction: t, where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
                             let config = await db.getModel('config').findOne();
                             let empresa = config.cnpj == "90816133000123" ? 2 : 1;
                             for (let i = 0; i < volumes.length; i++) {
@@ -3850,7 +3930,7 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-                        await db.getModel('est_volume').update({ consumido: true }, { where: { id: { [db.Op.in]: obj.ids } } });
+                        await db.getModel('est_volume').update({ consumido: true }, { where: { id: { [db.Op.in]: obj.ids } }, iduser: obj.req.user.id });
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -3947,7 +4027,7 @@ let main = {
                             if (invalidfields.length > 0) {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                             }
-                            await db.getModel('est_volume').update({ iddepositoendereco: obj.req.body.iddepositoendereco }, { where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
+                            await db.getModel('est_volume').update({ iddepositoendereco: obj.req.body.iddepositoendereco }, { where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } }, iduser: obj.req.user.id });
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
 
@@ -4116,7 +4196,8 @@ let main = {
                             let ids = obj.req.body.ids.split(',');
                             for (let i = 0; i < ids.length; i++) {
                                 await db.getModel('est_requisicaovolume').create({
-                                    iduser: obj.req.user.id
+                                    datahorasolicitado: moment()
+                                    , iduser: obj.req.user.id
                                     , datahora: application.formatters.be.datetime(obj.req.body.datahora)
                                     , iddeposito: obj.req.body.iddeposito
                                     , idvolume: ids[i]
@@ -5588,7 +5669,8 @@ let main = {
                                 const requisicao = await db.getModel('est_requisicaovolume').findOne({ transaction: t, where: { idvolume: vr.idvolume, datahoraatendido: { [db.Op.is]: null } } });
                                 if (!requisicao) {
                                     await db.getModel('est_requisicaovolume').create({
-                                        idvolume: vr.idvolume
+                                        datahorasolicitado: moment()
+                                        , idvolume: vr.idvolume
                                         , iddeposito: prerequisicao[i].iddeposito
                                         , iduser: obj.req.user.id
                                         , datahora: prerequisicao[i].datahoraentregar
@@ -5758,7 +5840,7 @@ let main = {
                                     , idvolume: volume.id
                                     , idvolumeajustemotivo: obj.req.body.idajustemotivo
                                     , qtd: application.formatters.be.decimal(obj.req.body.qtdajuste)
-                                });
+                                }, { iduser: obj.req.user.id });
                                 return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                             }
                         }
@@ -6357,7 +6439,7 @@ let main = {
                                         , umidade: obj.req.body.umidade
                                         , retardador: 'retardador' + ids[i] in obj.req.body && obj.req.body['retardador' + ids[i]] == 'on'
                                         , observacao: obj.req.body['observacao' + ids[i]] || null
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                 }
                             }
 
@@ -6741,7 +6823,7 @@ let main = {
                                 return application.success(obj.res, { redirect: '/v/apontamento_de_producao_-_producao/' + results[i].id + '?parent=' + oprecurso.id });
                             }
                         }
-                        let newapproducao = await db.getModel('pcp_approducao').create({ idoprecurso: oprecurso.id });
+                        let newapproducao = await db.getModel('pcp_approducao').create({ idoprecurso: oprecurso.id }, { iduser: obj.req.user.id });
                         return application.success(obj.res, { redirect: '/v/apontamento_de_producao_-_producao/' + newapproducao.id + '?parent=' + oprecurso.id });
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -6763,7 +6845,7 @@ let main = {
                                 db.getModel('pcp_apintegracao').create({
                                     integrado: false
                                     , texto: '10|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||.1.' + approducao[i].id + '|||'
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                         }
                     } catch (err) {
@@ -6854,7 +6936,7 @@ let main = {
                             if (oprecurso.idestado == config.idestadoencerrada) {
                                 return application.error(obj.res, { msg: 'Não é possível apagar apontamentos de OP encerrada' });
                             }
-                            await db.getModel('pcp_approducao').update({ integrado: false }, { transaction: obj.transaction, where: { idoprecurso: tempos[i].pcp_approducao.idoprecurso } });
+                            await db.getModel('pcp_approducao').update({ integrado: false }, { transaction: obj.transaction, iduser: obj.req.user.id, where: { idoprecurso: tempos[i].pcp_approducao.idoprecurso } });
                         }
                         await next(obj);
                     } catch (err) {
@@ -7071,7 +7153,7 @@ let main = {
                                     , consumido: false
                                     , qtdreal: qtd
                                     , observacao: saved.register.observacao
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                             if (sql.length > 0 && sql[0].idopetapa) {
                                 await db.getModel('est_volumereserva').create({
@@ -7080,7 +7162,7 @@ let main = {
                                     , idopetapa: sql[0].idopetapa
                                     , qtd: qtd
                                     , apontado: false
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                             let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { idoprecurso: oprecurso.id, recipiente: null } });
                             let idsvolumes = [];
@@ -7137,7 +7219,7 @@ let main = {
                                 let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
                                 let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa.idtprecurso } });
                                 if (tprecurso.codigo = 7) {
-                                    db.getModel('pcp_apinsumo').update({ recipiente: null }, { where: { idoprecurso: opr.id, recipiente: '' + volumes[i].id } });
+                                    db.getModel('pcp_apinsumo').update({ recipiente: null }, { where: { idoprecurso: opr.id, recipiente: '' + volumes[i].id }, iduser: obj.req.user.id });
                                 }
                                 approducao.integrado = false;
                                 approducao.save({ iduser: obj.req.user.id });
@@ -7146,7 +7228,7 @@ let main = {
                             db.getModel('pcp_apintegracao').create({
                                 integrado: false
                                 , texto: '10|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||.1.' + approducaovolumes[0].pcp_approducao.id + '|||'
-                            });
+                            }, { iduser: obj.req.user.id });
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -7452,7 +7534,7 @@ let main = {
                                         , idopetapa: sql[0].idopetapa
                                         , qtd: qtd
                                         , apontado: false
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                 }
 
                                 if (tprecurso.codigo = 7) {
@@ -7556,7 +7638,7 @@ let main = {
                                 db.getModel('pcp_apintegracao').create({
                                     integrado: false
                                     , texto: '30|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||.2.' + apperdas[i].id + '||||||'
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                         }
                     } catch (err) {
@@ -7672,25 +7754,25 @@ let main = {
                                     , duracao: duracao
                                     , dataini: dataUltimoAp.format(application.formatters.be.datetime_format)
                                     , datafim: dataini.format(application.formatters.be.datetime_format)
-                                });
+                                }, { iduser: obj.req.user.id });
                             } else {
                                 let approducao = await db.getModel('pcp_approducao').create({
                                     idoprecurso: oprecurso.id
-                                });
+                                }, { iduser: obj.req.user.id });
 
                                 await db.getModel('pcp_approducaotempo').create({
                                     idapproducao: approducao.id
                                     , duracao: duracao - 1
                                     , dataini: dataUltimoAp.format(application.formatters.be.datetime_format)
                                     , datafim: dataini.add(-1, 'minutes').format(application.formatters.be.datetime_format)
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                         }
 
                         let saved = await next(obj);
                         if (saved.success) {
                             main.plastrela.pcp.ap.f_corrigeEstadoOps(oprecurso.id);
-                            db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: saved.register.idoprecurso } });
+                            db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: saved.register.idoprecurso }, iduser: obj.req.user.id });
                         }
 
                     } catch (err) {
@@ -7713,9 +7795,9 @@ let main = {
                                 db.getModel('pcp_apintegracao').create({
                                     integrado: false
                                     , texto: '20|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '||||||||||.3.' + apparadas[i].id
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
-                            db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: apparadas[0].idoprecurso } });
+                            db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: apparadas[0].idoprecurso }, iduser: obj.req.user.id });
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -7906,7 +7988,7 @@ let main = {
                                     , consumido: false
                                     , qtdreal: application.formatters.be.decimal(bc[1], 4)
                                     , observacao: 'Gerada pelo Setor'
-                                });
+                                }, { iduser: obj.req.user.id });
                                 if (volumeb) {
                                     return application.success(obj.res, {
                                         data: {
@@ -8062,7 +8144,7 @@ let main = {
                                     , qtd: (qtd * (application.formatters.be.decimal(obj.data['perc' + selects[i]]) / 100)).toFixed(4)
                                     , produto: obj.data.idvolume + ' - ' + (versao ? versao.descricaocompleta : volume.observacao || '') + (volume.lote ? ' - Lote: ' + volume.lote : '')
                                     , recipiente: alpha[selects[i]]
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                         } else {
                             await db.getModel('pcp_apinsumo').create({
@@ -8074,7 +8156,7 @@ let main = {
                                 , qtd: qtd
                                 , produto: obj.data.idvolume + ' - ' + (versao ? versao.descricaocompleta : volume.observacao || '') + (volume.lote ? ' - Lote: ' + volume.lote : '')
                                 , idsubstituto: obj.data.idsubstituto || null
-                            });
+                            }, { iduser: obj.req.user.id });
                         }
 
                         await volume.save({ iduser: obj.req.user.id });
@@ -8160,13 +8242,13 @@ let main = {
                                     await db.getModel('pcp_apintegracao').create({
                                         integrado: false
                                         , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||||||||.4.' + apinsumos[0].id + '-' + misturas[i].id
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                 }
                             } else {
                                 await db.getModel('pcp_apintegracao').create({
                                     integrado: false
                                     , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||||||||.4.' + apinsumos[0].id
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
 
                             for (let i = 0; i < volumes.length; i++) {
@@ -8233,7 +8315,7 @@ let main = {
                                 , qtd: saved.register.qtd
                                 , consumido: false
                                 , qtdreal: saved.register.qtd
-                            });
+                            }, { iduser: obj.req.user.id });
                         } else {
                             return application.error(obj.res, { msg: 'Não é permitido a edição em retornos, exclua se necessário' });
                         }
@@ -8539,7 +8621,7 @@ let main = {
                             , idvolume: obj.data.idvolume
                             , qtd: application.formatters.be.decimal(obj.data.qtd, 4)
                             , produto: obj.data.produto
-                        });
+                        }, { iduser: obj.req.user.id });
 
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
@@ -8582,7 +8664,7 @@ let main = {
                             , iddeposito: recurso.iddepositoprodutivo
                             , qtdreal: 0
                             , observacao: mistura.descricao
-                        });
+                        }, { iduser: obj.req.user.id });
 
                         for (let i = 0; i < volumes.length; i++) {
                             if (volumes[i].est_volume.idversao) {
@@ -8590,7 +8672,7 @@ let main = {
                                     idvolume: volume.id
                                     , idvmistura: volumes[i].idvolume
                                     , qtd: volumes[i].qtd
-                                });
+                                }, { iduser: obj.req.user.id });
                             } else {
                                 let misturas = await db.getModel('est_volumemistura').findAll({ include: [{ all: true }], where: { idvolume: volumes[i].idvolume } });
                                 for (let z = 0; z < misturas.length; z++) {
@@ -8598,7 +8680,7 @@ let main = {
                                         idvolume: volume.id
                                         , idvmistura: misturas[z].idvmistura
                                         , qtd: (misturas[z].qtd / misturas[z].est_volume.qtd) * volumes[i].qtd
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                 }
                             }
                             let vol = await db.getModel('est_volume').findOne({ where: { id: volumes[i].idvolume } });
@@ -8629,7 +8711,7 @@ let main = {
                                 , qtd: (qtdtotal * (parseFloat(selects[k]) / 100)).toFixed(4)
                                 , produto: volume.id + ' - ' + volume.observacao
                                 , recipiente: alpha[k]
-                            });
+                            }, { iduser: obj.req.user.id });
                         }
 
                         return application.success(obj.res, { msg: application.message.success, historyBack: true });
@@ -8847,7 +8929,7 @@ let main = {
 
                         let opconjugadas = await db.getModel('pcp_opconjugada').findAll({ where: { idopprincipal: oprecurso.id } });
                         for (let i = 0; i < opconjugadas.length; i++) {
-                            await db.getModel('pcp_oprecurso').update({ idestado: config.idestadoencerrada, integrado: 'P' }, { where: { id: opconjugadas[i].idopconjugada } });
+                            await db.getModel('pcp_oprecurso').update({ idestado: config.idestadoencerrada, integrado: 'P' }, { where: { id: opconjugadas[i].idopconjugada }, iduser: obj.req.user.id });
                         }
 
                         oprecurso.idestado = config.idestadoencerrada;
@@ -8993,24 +9075,32 @@ let main = {
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.ids[0] } });
-                        let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
-                        let etapa = await db.getModel('pcp_etapa').findOne({ where: { codigo: 80 } });
-                        let opetapanova = await db.getModel('pcp_opetapa').create({
-                            seq: 99
-                            , idop: opetapa.idop
+                        const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.ids[0] } });
+                        const opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
+                        const op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
+                        const opnova = await db.getModel('pcp_op').create({
+                            codigo: 9999999
+                            , idopmae: op.id
+                            , idversao: op.idversao
+                            , peso: 0
+                            , quantidade: 0
+                        }, { iduser: obj.req.user.id });
+                        const etapa = await db.getModel('pcp_etapa').findOne({ where: { codigo: 80 } });
+                        const opetapanova = await db.getModel('pcp_opetapa').create({
+                            seq: 1
+                            , idop: opnova.id
                             , idetapa: etapa.id
-                        });
-                        let recurso = await db.getModel('pcp_recurso').findOne({ where: { codigo: 801 } });
-                        let opestado = await db.getModel('pcp_opestado').findOne({ where: { descricao: 'Em Fila de Produção' } });
-                        await db.getModel('pcp_oprecurso').create({
+                        }, { iduser: obj.req.user.id });
+                        const recurso = await db.getModel('pcp_recurso').findOne({ where: { codigo: 801 } });
+                        const opestado = await db.getModel('pcp_opestado').findOne({ where: { descricao: 'Em Fila de Produção' } });
+                        const oprecursonovo = await db.getModel('pcp_oprecurso').create({
                             idrecurso: recurso ? recurso.id : null
                             , peso: 0
                             , idopetapa: opetapanova.id
                             , quantidade: 0
                             , idestado: opestado.id
-                        });
-                        return application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                        }, { iduser: obj.req.user.id });
+                        return application.success(obj.res, { msg: application.message.success, reloadtables: true, redirect: `/v/apontamento_de_producao/${oprecursonovo.id}` });
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -9210,7 +9300,7 @@ let main = {
                                 , peso: oprecurso.peso
                                 , idrecurso: obj.req.body.idrecurso
                                 , observacao: oprecurso.observacao
-                            });
+                            }, { iduser: obj.req.user.id });
                             let apcliche = await db.getModel('pcp_apcliche').findOne({ where: { idoprecurso: obj.req.body.id || 0 } });
                             if (apcliche) {
                                 let apc = await db.getModel('pcp_apcliche').create({
@@ -9218,7 +9308,7 @@ let main = {
                                     , datahora: apcliche.datahora
                                     , idrecurso: apcliche.idrecurso
                                     , passo: apcliche.passo
-                                });
+                                }, { iduser: obj.req.user.id });
                                 let montagens = await db.getModel('pcp_apclichemontagem').findAll({ where: { idapcliche: apcliche.id } });
                                 for (let i = 0; i < montagens.length; i++) {
                                     let apcm = await db.getModel('pcp_apclichemontagem').create({
@@ -9231,7 +9321,7 @@ let main = {
                                         , camerondistancia: montagens[i].camerondistancia
                                         , idanilox: montagens[i].idanilox
                                         , viscosidade: montagens[i].viscosidade
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                     let secagem = await db.getModel('pcp_apclichemontsecagem').findOne({ where: { idapclichemontagem: montagens[i].id }, order: [['datahora', 'desc']] });
                                     if (secagem) {
                                         await db.getModel('pcp_apclichemontagem').create({
@@ -9242,7 +9332,7 @@ let main = {
                                             , secagem: secagem.secagem
                                             , temperatura: secagem.temperatura
                                             , umidade: secagem.umidade
-                                        });
+                                        }, { iduser: obj.req.user.id });
                                     }
                                 }
                             }
@@ -9255,7 +9345,7 @@ let main = {
                                     , iduser: conferencias[i].iduser
                                     , observacao: conferencias[i].observacao
                                     , resultado: conferencias[i].resultado
-                                });
+                                }, { iduser: obj.req.user.id });
                             }
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
@@ -9345,7 +9435,7 @@ let main = {
                                         , qtdrestante: parseFloat(componentes[z].qtd).toFixed(4)
                                         , iddeposito: obj.req.body.iddeposito
                                         , requisitado: false
-                                    }, { transaction: t });
+                                    }, { transaction: t, iduser: obj.req.user.id });
                                 }
                             }
                             await t.commit();
@@ -9465,7 +9555,7 @@ let main = {
                                     , datahora: apcliche.datahora
                                     , idrecurso: apcliche.idrecurso
                                     , passo: apcliche.passo
-                                });
+                                }, { iduser: obj.req.user.id });
                                 let montagens = await db.getModel('pcp_apclichemontagem').findAll({ where: { idapcliche: apcliche.id } });
                                 for (let i = 0; i < montagens.length; i++) {
                                     let apcm = await db.getModel('pcp_apclichemontagem').create({
@@ -9478,7 +9568,7 @@ let main = {
                                         , camerondistancia: montagens[i].camerondistancia
                                         , idanilox: montagens[i].idanilox
                                         , viscosidade: montagens[i].viscosidade
-                                    });
+                                    }, { iduser: obj.req.user.id });
                                     let secagem = await db.getModel('pcp_apclichemontsecagem').findOne({ where: { idapclichemontagem: montagens[i].id }, order: [['datahora', 'desc']] });
                                     if (secagem) {
                                         await db.getModel('pcp_apclichemontagem').create({
@@ -9489,7 +9579,7 @@ let main = {
                                             , secagem: secagem.secagem
                                             , temperatura: secagem.temperatura
                                             , umidade: secagem.umidade
-                                        });
+                                        }, { iduser: obj.req.user.id });
                                     }
                                 }
                             }
@@ -9659,8 +9749,8 @@ let main = {
                                 await db.getModel('pcp_opconjugada').create({
                                     idopprincipal: obj.req.body.idopprincipal
                                     , idopconjugada: ids[i]
-                                });
-                                await db.getModel('pcp_apcliche').update({ idoprecurso: obj.req.body.idopprincipal }, { where: { idoprecurso: ids[i] } });
+                                }, { iduser: obj.req.user.id });
+                                await db.getModel('pcp_apcliche').update({ idoprecurso: obj.req.body.idopprincipal }, { where: { idoprecurso: ids[i] }, iduser: obj.req.user.id });
                             }
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
@@ -9722,7 +9812,12 @@ let main = {
                             if (invalidfields.length > 0) {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                             }
-                            let cliche = await db.getModel('pcp_apcliche').create({ datahora: moment(), idoprecurso: obj.req.body.idoprecurso, idrecurso: obj.req.body.recurso, passo: application.formatters.be.decimal(obj.req.body.passo) });
+                            let cliche = await db.getModel('pcp_apcliche').create({
+                                datahora: moment()
+                                , idoprecurso: obj.req.body.idoprecurso
+                                , idrecurso: obj.req.body.recurso
+                                , passo: application.formatters.be.decimal(obj.req.body.passo)
+                            }, { iduser: obj.req.user.id });
                             if (!cliche) {
                                 return application.error(obj.res, { msg: "Não foi possível criar o clichê" });
                             }
@@ -9765,14 +9860,14 @@ let main = {
                                         , idcamisa: ultimaMontagemItens[i].idcamisa
                                         , viscosidade: ultimaMontagemItens[i].viscosidade
                                         , observacao: ultimaMontagemItens[i].observacao
-                                    });
+                                    }, { iduser: obj.req.user.id });
 
                                     let consumosAnteriores = await db.getModel('pcp_apclichemontconsumo').findAll({ where: { idapclichemontagem: ultimaMontagemItens[i].id } });
                                     for (let j = 0; j < consumosAnteriores.length; j++) {
                                         await db.getModel('pcp_apclichemontconsumo').create({
                                             idapclichemontagem: apmontagem.id
                                             , idduplaface: consumosAnteriores[j].idduplaface
-                                        });
+                                        }, { iduser: obj.req.user.id });
                                     }
                                 }
 
@@ -9787,7 +9882,7 @@ let main = {
                                             estacao: componentes[i].estacao
                                             , idapcliche: cliche.id
                                             , idversao: componentes[i].pcp_versao.id
-                                        });
+                                        }, { iduser: obj.req.user.id });
                                     }
                                 }
 
@@ -10276,7 +10371,7 @@ let main = {
                                 , datahora: misturas[i].datahora
                                 , qtd: misturas[i].qtd
                                 , produto: misturas[i].descricaocompleta
-                            });
+                            }, { iduser: obj.req.user.id });
                             misturasdelete.push(misturas[i].idapinsumo);
                         }
                         await db.getModel('pcp_apinsumo').destroy({ where: { id: { [db.Op.in]: misturasdelete } } });
@@ -10317,7 +10412,7 @@ let main = {
                                     , qtd: pesolancamento.toFixed(4)
                                     , produto: insumos[z].produto
                                     , recipiente: sql[i].grupo
-                                });
+                                }, { iduser: obj.req.user.id });
 
                                 if (restante == 0) {
                                     break;
@@ -10383,10 +10478,10 @@ let main = {
                         if (param.indexOf(obj.req.user.id) < 0) {
                             return application.error(obj.res, { msg: 'Você não tem permissão para realizar esta ação' });
                         }
-                        await db.getModel('pcp_apinsumo').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] } });
-                        await db.getModel('pcp_apperda').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] } });
-                        await db.getModel('pcp_apparada').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] } });
-                        await db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] } });
+                        await db.getModel('pcp_apinsumo').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] }, iduser: obj.req.user.id });
+                        await db.getModel('pcp_apperda').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] }, iduser: obj.req.user.id });
+                        await db.getModel('pcp_apparada').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] }, iduser: obj.req.user.id });
+                        await db.getModel('pcp_approducao').update({ integrado: false }, { where: { idoprecurso: obj.ids[0] }, iduser: obj.req.user.id });
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ include: [{ all: true }], where: { id: obj.ids[0] } });
                         oprecurso.integrado = 'P';
                         await oprecurso.save({ iduser: obj.req.user.id });
@@ -10584,7 +10679,7 @@ let main = {
                             , idatributoconferencia: obj.data.confatributo
                             , resultado: obj.data.confresul
                             , observacao: obj.data.confobs || null
-                        });
+                        }, { iduser: obj.req.user.id });
 
                         return application.success(obj.res, { reloadtables: true });
                     } catch (err) {
@@ -10625,7 +10720,7 @@ let main = {
                 }
                 , js_setTesteCuraAcelerada: async (obj) => {
                     try {
-                        await db.getModel('pcp_approducao').update({ curaacelerada: true }, { where: { idoprecurso: obj.data.idoprecurso || 0 } });
+                        await db.getModel('pcp_approducao').update({ curaacelerada: true }, { where: { idoprecurso: obj.data.idoprecurso || 0 }, iduser: obj.req.user.id });
                         return application.success(obj.res, { msg: application.message.success });
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -12347,7 +12442,7 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-                        await db.getModel('ven_proposta').update({ visualizadopor: obj.req.user.id }, { where: { id: { [db.Op.in]: obj.ids } } });
+                        await db.getModel('ven_proposta').update({ visualizadopor: obj.req.user.id }, { where: { id: { [db.Op.in]: obj.ids } }, iduser: obj.req.user.id });
                         return application.success(obj.res, { msg: application.message.success });
                     } catch (err) {
                         return application.fatal(obj.res, err);
@@ -12358,7 +12453,7 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-                        await db.getModel('ven_proposta').update({ cancelada: true }, { where: { id: { [db.Op.in]: obj.ids } } });
+                        await db.getModel('ven_proposta').update({ cancelada: true }, { where: { id: { [db.Op.in]: obj.ids } }, iduser: obj.req.user.id });
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);

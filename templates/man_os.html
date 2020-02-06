@@ -106,6 +106,7 @@
                 $('#divmain').removeClass('hidden');
             } else {
                 $('#divlogin').removeClass('hidden');
+                $('#view-submit').addClass('hidden');
             }
         }
 
@@ -240,6 +241,7 @@
                     if (response.success) {
                         $('#divlogin').addClass('hidden');
                         $('#divmain').removeClass('hidden');
+                        $('#view-submit').removeClass('hidden');
                         application.functions.setAutocomplete($iduserleitura, response.data.id, response.data.text);
                     }
                 });
