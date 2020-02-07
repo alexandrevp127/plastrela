@@ -698,7 +698,7 @@ let main = {
                         }
                         matv.assunto = replaces(matv.assunto);
                         matv.descricao = replaces(matv.descricao);
-                        let atividade = await db.getModel('atv_atividade').create(matv, { iduser: obj.req.user.id });
+                        let atividade = await db.getModel('atv_atividade').create(matv, { iduser: atividadeag.iduser_criacao });
                         let atvagcds = await db.getModel('atv_atividadeag_cd').findAll({ where: { idatividadeag: atividadeag.id } });
                         for (let i = 0; i < atvagcds.length; i++) {
                             await db.getModel('atv_atividade_cd').create({
