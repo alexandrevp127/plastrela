@@ -553,7 +553,7 @@
            <schema_name/>
            </partitioning>
     <connection>Iniflex</connection>
-    <sql>SELECT saldo.item, saldo.versao, saldo.deposito, sum&#x28;saldo.quantidade&#x29; as quantidade&#xd;&#xa;FROM estsaldos saldo&#xd;&#xa;INNER JOIN estitem item ON &#x28;saldo.empresa &#x3d; item.empresa AND saldo.item &#x3d; item.codigo&#x29;&#xd;&#xa;INNER JOIN pcpversao versao ON &#x28;item.empresa &#x3d; versao.empresa AND item.codigo &#x3d; versao.produto&#x29;&#xd;&#xa;WHERE saldo.empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d; and saldo.deposito not in &#x28;1,2,15&#x29;&#xd;&#xa;   AND saldo.quantidade &#x3e; 0&#xd;&#xa;group by saldo.item, saldo.versao, saldo.deposito&#xd;&#xa;</sql>
+    <sql>SELECT saldo.item, saldo.versao, saldo.deposito, saldo.quantidade as quantidade&#xd;&#xa;FROM estsaldos saldo&#xd;&#xa;WHERE saldo.empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d; and saldo.deposito not in &#x28;1,2,15&#x29;&#xd;&#xa;   AND saldo.quantidade &#x3e; 0&#xd;&#xa;</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
