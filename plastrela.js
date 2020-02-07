@@ -9081,7 +9081,7 @@ let main = {
                         const op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
                         const opnova = await db.getModel('pcp_op').create({
                             codigo: 9999999
-                            , idopmae: op.id
+                            , idopmae: op.idopmae || op.id
                             , idversao: op.idversao
                             , peso: 0
                             , quantidade: 0
