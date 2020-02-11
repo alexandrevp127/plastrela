@@ -553,7 +553,7 @@
            <schema_name/>
            </partitioning>
     <connection>Iniflex</connection>
-    <sql>SELECT saldo.item, saldo.versao, saldo.deposito, saldo.quantidade as quantidade&#xd;&#xa;FROM estsaldos saldo&#xd;&#xa;left join estitem i on &#x28;saldo.empresa &#x3d; i.empresa and saldo.item &#x3d; i.codigo&#x29;&#xd;&#xa;WHERE saldo.empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d; and saldo.deposito not in &#x28;1,2,15&#x29;&#xd;&#xa;   AND saldo.quantidade &#x3e; 0&#xd;&#xa;   and i.tipo_item not in &#x28;1,2&#x29;&#xd;&#xa;   and i.grupo not in &#x28;502, 513, 514, 517, 525, 532, 538, 541, 545&#x29;&#xd;&#xa;</sql>
+    <sql>SELECT saldo.item, saldo.versao, saldo.deposito, saldo.quantidade as quantidade&#xd;&#xa;FROM estsaldos saldo&#xd;&#xa;left join estitem i on &#x28;saldo.empresa &#x3d; i.empresa and saldo.item &#x3d; i.codigo&#x29;&#xd;&#xa;WHERE saldo.empresa &#x3d; &#x24;&#x7b;EMPRESA&#x7d; and saldo.deposito not in &#x28;1,2,15&#x29;&#xd;&#xa;   AND saldo.quantidade &#x3e; 0&#xd;&#xa;   and i.tipo_item not in &#x28;1,2,4,7,8,9,10,11&#x29;&#xd;&#xa;   and i.grupo not in &#x28;502, 513, 514, 517, 525, 532, 538, 541, 545&#x29;&#xd;&#xa;</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
