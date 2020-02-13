@@ -1,8 +1,8 @@
 $(function () {
     var intervalBalanca = null;
     var totalNaoVinculado = 0;
-    var rfidurl = 'http://localhost:8081';
-    var balancaurl = 'http://localhost:8082';
+    var rfidurl = '';
+    var balancaurl = '';
     var run = 0;
     if (application.isRegisterview) {
 
@@ -31,6 +31,11 @@ $(function () {
                         $('#apinsumoAdicionarModal input[name="qtd"]').focus();
                     }
                 } else {
+                    if ($('input[name="etapa"]').val() == 70) {
+                        $.get(rfidurl + '/read', function (data) {
+                            buscaCodigoBarra('-10-' + data);
+                        });
+                    }
                     $('#apinsumoAdicionarModal input[name="idvolume"]').val('');
                     $('#apinsumoAdicionarModal input[name="qtdreal"]').val('');
                     $('#apinsumoAdicionarModal input[name="produto"]').val('');
@@ -54,7 +59,8 @@ $(function () {
         function addinsumo() {
             application.jsfunction('plastrela.pcp.apinsumo.__adicionarModal', { idoprecurso: application.functions.getId(), etapa: $('input[name="etapa"]').val() }, function (response) {
                 application.handlers.responseSuccess(response);
-                totalNaoVinculado = response.totalNaoVinculado;
+                rfidurl = $('input[name="lrrfid"]').val();
+                balancaurl = $('input[name="lrbalanca"]').val();
                 if ($('input[name="etapa"]').val() == 70) {
                     $.get(rfidurl + '/read', function (data) {
                         buscaCodigoBarra('-10-' + data);
@@ -65,8 +71,9 @@ $(function () {
                             , type: 'GET'
                             , dataType: 'json'
                             , success: function (response) {
-                                $('input[name="qtd"').val(psF(response.weight - totalNaoVinculado, 2));
-                                $('input[name="qtd"').focus();
+                                $('input[name="qtd"').val(psF(response.weight - totalNaoVinculado, 4));
+                                if (!$(':focus').is('input'))
+                                    $('input[name="qtd"').focus();
                             }
                         });
                     }, 750);
@@ -138,6 +145,12 @@ $(function () {
                     $modal.find('input[name="qtd"]').keydown(function (e) {
                         if (e.keyCode == 13) {
                             $('button#apontar').trigger('click');
+                        } else if (e.keyCode == 17 && intervalBalanca) {
+                            clearInterval(intervalBalanca);
+                            $.get(rfidurl + '/cancel');
+                            $modal.find('input[name="qtd"]').prop('readonly', false);
+                            $('input[name="codigodebarra"]').closest('div.hidden').removeClass('hidden');
+                            $('input[name="codigodebarra"]').focus();
                         }
                     });
                     $('button#apontar').click(function () {

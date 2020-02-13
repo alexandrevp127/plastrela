@@ -7364,21 +7364,21 @@ let main = {
                             let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
 
                             if (tprecurso.codigo == 7) {
-                                let sql = await db.sequelize.query(`
-                                select
-                                    v.*
-                                from
-                                    pcp_oprecurso opr
-                                left join pcp_approducao app on (opr.id = app.idoprecurso)
-                                left join pcp_approducaovolume apv on (app.id = apv.idapproducao)
-                                left join est_volume v on (apv.id = v.idapproducaovolume)
-                                where
-                                    opr.id = ${oprecurso.id}
-                                    and v.consumido = false
-                                `, { type: db.Sequelize.QueryTypes.SELECT });
-                                if (sql.length > 0) {
-                                    return application.error(obj.res, { msg: 'Não é possível produzir uma nova tinta sem ter consumido as anteriores' });
-                                }
+                                // let sql = await db.sequelize.query(`
+                                // select
+                                //     v.*
+                                // from
+                                //     pcp_oprecurso opr
+                                // left join pcp_approducao app on (opr.id = app.idoprecurso)
+                                // left join pcp_approducaovolume apv on (app.id = apv.idapproducao)
+                                // left join est_volume v on (apv.id = v.idapproducaovolume)
+                                // where
+                                //     opr.id = ${oprecurso.id}
+                                //     and v.consumido = false
+                                // `, { type: db.Sequelize.QueryTypes.SELECT });
+                                // if (sql.length > 0) {
+                                //     return application.error(obj.res, { msg: 'Não é possível produzir uma nova tinta sem ter consumido as anteriores' });
+                                // }
                             }
 
                             let sql = [];
@@ -7499,7 +7499,7 @@ let main = {
 
                             let qtd = obj.req.body.qtd;
                             let metragem = null;
-                            if ([1, 2, 3, 5].indexOf(tprecurso.codigo) >= 0) {
+                            if ([1, 2, 3, 5, 6].indexOf(tprecurso.codigo) >= 0) {
                                 qtd = pesoliquido;
                                 metragem = obj.req.body.qtd;
                             }
@@ -7527,16 +7527,6 @@ let main = {
                                     , qtdreal: qtd
                                 }, { iduser: obj.req.body.iduser });
 
-                                if (sql[0].idopetapa) {
-                                    await db.getModel('est_volumereserva').create({
-                                        idvolume: volume.id
-                                        , idpedidoitem: idpedidoitem
-                                        , idopetapa: sql[0].idopetapa
-                                        , qtd: qtd
-                                        , apontado: false
-                                    }, { iduser: obj.req.user.id });
-                                }
-
                                 if (tprecurso.codigo = 7) {
                                     let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { idoprecurso: oprecurso.id, recipiente: null } });
                                     for (let z = 0; z < apinsumos.length; z++) {
@@ -7547,6 +7537,28 @@ let main = {
                                             , idvmistura: apinsumos[z].idvolume
                                             , qtd: apinsumos[z].qtd
                                         }, { iduser: obj.req.body.iduser });
+                                    }
+                                    const opconjugadas = await db.getModel('pcp_opconjugada').findAll({ include: [{ all: true }], where: { idopprincipal: oprecurso.id } });
+                                    for (let i = 0; i < opconjugadas.length; i++) {
+                                        let ope = await db.getModel('pcp_opetapa').findOne({ include: [{ all: true }], where: { id: opconjugadas[i].opconjugada.idopetapa } });
+                                        let opm = await db.getModel('pcp_op').findOne({ where: { id: ope.pcp_op.idopmae } });
+                                        let opfe = await db.getModel('pcp_opetapa').findOne({ where: { idop: opm.id }, order: [['seq', 'asc']] });
+                                        await db.getModel('est_volumereserva').create({
+                                            idvolume: volume.id
+                                            , idopetapa: opfe.id
+                                            , qtd: qtd / opconjugadas.length
+                                            , apontado: false
+                                        }, { iduser: obj.req.user.id });
+                                    }
+                                } else {
+                                    if (sql[0].idopetapa) {
+                                        await db.getModel('est_volumereserva').create({
+                                            idvolume: volume.id
+                                            , idpedidoitem: idpedidoitem
+                                            , idopetapa: sql[0].idopetapa
+                                            , qtd: qtd
+                                            , apontado: false
+                                        }, { iduser: obj.req.user.id });
                                     }
                                 }
 
@@ -7564,11 +7576,15 @@ let main = {
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-                        let volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
-                        let needle = require('needle');
+                        const volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
+                        const needle = require('needle');
+                        const param = await main.platform.parameter.f_get('localresource_' + obj.req.user.id);
+                        if (!param) {
+                            return application.error(obj.res, { msg: 'Recursos Locais não configurado' });
+                        }
                         while (true) {
-                            await needle('get', 'http://172.10.30.115:8081/write/' + volume.id);
-                            let volid = parseInt((await needle('get', 'http://172.10.30.115:8081/read')).body);
+                            await needle('get', param.rfid + '/write/' + volume.id);
+                            const volid = parseInt((await needle('get', param.rfid + '/read')).body);
                             if (volid == volume.id) {
                                 break;
                             }
@@ -7576,6 +7592,72 @@ let main = {
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);
+                    }
+                }
+                , e_aplicarAjustesTintas: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.ids.length != 1) {
+                            return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                        }
+                        const approducaovolume = await db.getModel('pcp_approducaovolume').findOne({ where: { id: obj.ids[0] } })
+                        if (!approducaovolume) {
+                            return application.error(obj.res, { msg: 'Produção não encontrado' });
+                        }
+                        const approducao = await db.getModel('pcp_approducao').findOne({ where: { id: approducaovolume ? approducaovolume.idapproducao : 0 } });
+                        if (!approducao) {
+                            return application.error(obj.res, { msg: 'Produção não encontrado' });
+                        }
+                        const volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
+                        if (!volume) {
+                            return application.error(obj.res, { msg: 'Volume não encontrado' });
+                        }
+                        if (volume.qtd != volume.qtdreal) {
+                            return application.error(obj.res, { msg: 'Não é possível modificar um volume já utilizado' });
+                        }
+                        let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { idoprecurso: approducao.idoprecurso, recipiente: null } });
+                        if (apinsumos.length <= 0) {
+                            return application.error(obj.res, { msg: 'Não existem ajustes a serem aplicados' });
+                        }
+                        t = await db.sequelize.transaction();
+                        //Editar Quantidades Volume e Produção
+                        let qtd = volume.qtd;
+                        for (let i = 0; i < apinsumos.length; i++) {
+                            qtd += apinsumos[i].qtd;
+                            apinsumos[i].recipiente = volume.id;
+                            await apinsumos[i].save({ iduser: obj.req.user.id, transaction: t });
+                        }
+                        volume.qtd = qtd;
+                        volume.qtdreal = qtd;
+                        await volume.save({ iduser: obj.req.user.id, transaction: t });
+                        approducaovolume.qtd = qtd;
+                        approducaovolume.pesoliquido = qtd;
+                        approducaovolume.pesobruto = qtd + 1.5;
+                        await approducaovolume.save({ iduser: obj.req.user.id, transaction: t });
+                        //Refazer Mistura
+                        await db.getModel('est_volumemistura').destroy({ transaction: t, where: { idvolume: volume.id } });
+                        apinsumos = await db.sequelize.query(`select idvolume, sum(qtd) as qtd from pcp_apinsumo where idoprecurso = ${approducao.idoprecurso} and recipiente = '${volume.id}' group by 1`,
+                            { type: db.Sequelize.QueryTypes.SELECT, transaction: t });
+                        for (let i = 0; i < apinsumos.length; i++) {
+                            await db.getModel('est_volumemistura').create({
+                                idvolume: volume.id
+                                , idvmistura: apinsumos[i].idvolume
+                                , qtd: apinsumos[i].qtd
+                            }, { iduser: obj.req.body.iduser, transaction: t });
+                        }
+                        //Ajusta Reserva
+                        const reserva = await db.getModel('est_volumereserva').findOne({ transaction: t, where: { idvolume: volume.id }, order: [['id', 'asc']] });
+                        reserva.qtd = qtd;
+                        await reserva.save({ iduser: obj.req.user.id, transaction: t });
+                        //Reintegrar
+                        approducao.integrado = false;
+                        await approducao.save({ iduser: obj.req.user.id, transaction: t });
+                        //--
+                        await t.commit();
+                        application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        t.rollback();
+                        application.fatal(obj.res, err);
                     }
                 }
                 , e_verificarConsumos: async (obj) => {
@@ -7859,9 +7941,19 @@ let main = {
                     });
                     body += '</div>';
                     if (obj.data.etapa == 70) {
-                        body += '<div class="col-md-12 no-padding text-center"><h3>Aguardando leitura RFID</h3></div>';
+                        body += '<div class="col-md-12 no-padding text-center"><h3>Leitura RFID</h3></div>';
+                        const param = await main.platform.parameter.f_get('localresource_' + obj.req.user.id);
+                        if (param) {
+                            body += application.components.html.hidden({
+                                name: 'lrrfid'
+                                , value: param.rfid
+                            });
+                            body += application.components.html.hidden({
+                                name: 'lrbalanca'
+                                , value: param.balanca
+                            });
+                        }
                     }
-
                     body += application.components.html.text({
                         width: '12'
                         , name: 'produto'
@@ -7915,17 +8007,17 @@ let main = {
                 }
                 , __pegarVolume: async function (obj) {
                     try {
-
                         if (!obj.data.codigodebarra) {
                             return application.error(obj.res, { msg: 'Informe o código de barra' });
                         }
-
                         switch (obj.data.codigodebarra.toLowerCase().substring(0, 1)) {
                             case '-':
                                 let codigodebarra = obj.data.codigodebarra.split('-');
                                 codigodebarra = parseInt(codigodebarra[codigodebarra.length - 1]);
-
-                                let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: codigodebarra } });
+                                if (isNaN(codigodebarra)) {
+                                    return application.error(obj.res, { msg: 'Volume com formato desconhecido' });
+                                }
+                                const volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: codigodebarra } });
                                 if (volume) {
                                     if (volume.consumido) {
                                         return application.error(obj.res, { msg: 'Volume já se encontra consumido' });
@@ -7949,7 +8041,7 @@ let main = {
                                     //         type: db.Sequelize.QueryTypes.SELECT
                                     //     });
 
-                                    return application.success(obj.res, {
+                                    application.success(obj.res, {
                                         data: {
                                             id: volume.id
                                             , qtdreal: application.formatters.fe.decimal(volume.qtdreal, 4)
@@ -8188,6 +8280,77 @@ let main = {
                         apontamento_running = 0;
                     }
                 }
+                , e_apontarSobra: async (obj) => {
+                    let t;
+                    try {
+                        if (obj.req.method == 'GET') {
+                            if (obj.ids.length != 1) {
+                                return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                            }
+                            let body = '';
+                            body += application.components.html.hidden({ name: 'idapinsumo', value: obj.ids[0] });
+                            body += application.components.html.decimal({
+                                width: '12'
+                                , label: 'Quantidade'
+                                , name: 'qtd'
+                                , precision: 4
+                            });
+                            return application.success(obj.res, {
+                                modal: {
+                                    form: true
+                                    , action: '/event/' + obj.event.id
+                                    , id: 'modalevt' + obj.event.id
+                                    , title: obj.event.description
+                                    , body: body
+                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-primary">Confirmar</button>'
+                                }
+                            });
+                        } else {
+                            const invalidfields = application.functions.getEmptyFields(obj.req.body, ['idapinsumo', 'qtd']);
+                            if (invalidfields.length > 0) {
+                                return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
+                            }
+                            const qtd = parseFloat(obj.req.body.qtd);
+                            if (qtd <= 0) {
+                                return application.error(obj.res, { msg: 'A quantidade deve ser maior que 0' });
+                            }
+                            const api = await db.getModel('pcp_apinsumo').findOne({ where: { id: obj.req.body.idapinsumo } });
+                            if (!api) {
+                                return application.error(obj.res, { msg: 'Insumo não encontrado' });
+                            }
+                            if (qtd >= api.qtd) {
+                                return application.error(obj.res, { msg: 'A quantidade deve ser inferior a quantidade do insumo apontado' });
+                            }
+                            const preap = await main.plastrela.pcp.ap.f_verificaPreApontamento(api.idoprecurso);
+                            if (!preap.success) {
+                                return application.error(obj.res, { msg: preap.msg });
+                            }
+                            const v = await db.getModel('est_volume').findOne({ where: { id: api.idvolume } });
+                            if (!v) {
+                                return application.error(obj.res, { msg: 'Volume não encontrado' });
+                            }
+                            t = await db.sequelize.transaction();
+                            api.qtd -= qtd;
+                            api.integrado = false;
+                            v.consumido = false;
+                            v.qtdreal += qtd;
+                            await api.save({ iduser: obj.req.user.id, transaction: t });
+                            await v.save({ iduser: obj.req.user.id, transaction: t });
+                            await db.getModel('pcp_apsobra').create({
+                                qtd: qtd
+                                , idoprecurso: api.idoprecurso
+                                , idapinsumo: api.id
+                                , datahora: moment()
+                            }, { iduser: obj.req.user.id, transaction: t });
+                            await t.commit();
+                            application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                        }
+                    } catch (err) {
+                        if (t)
+                            t.rollback();
+                        application.fatal(obj.res, err);
+                    }
+                }
                 , ondelete: async function (obj, next) {
                     try {
                         if (obj.ids.length != 1) {
@@ -8414,37 +8577,29 @@ let main = {
                 }
                 , ondelete: async function (obj, next) {
                     try {
-
-                        let config = await db.getModel('pcp_config').findOne();
-                        let apsobras = await db.getModel('pcp_apsobra').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
-
+                        const config = await db.getModel('pcp_config').findOne();
+                        const apsobras = await db.getModel('pcp_apsobra').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
                         for (let i = 0; i < apsobras.length; i++) {
                             if (apsobras[i].pcp_oprecurso.idestado == config.idestadoencerrada) {
                                 return application.error(obj.res, { msg: 'Não é possível apagar apontamentos de OP encerrada' });
                             }
                         }
-
                         for (let i = 0; i < apsobras.length; i++) {
-                            let apinsumo = await db.getModel('pcp_apinsumo').findOne({ where: { id: apsobras[i].idapinsumo } });
+                            const apinsumo = await db.getModel('pcp_apinsumo').findOne({ transaction: obj.transaction, where: { id: apsobras[i].idapinsumo } });
                             apinsumo.qtd = (parseFloat(apinsumo.qtd) + parseFloat(apsobras[i].qtd)).toFixed(4);
                             apinsumo.integrado = false;
-                            apinsumo.save({ iduser: obj.req.user.id });
-
-                            let volume = await db.getModel('est_volume').findOne({ where: { id: apinsumo.idvolume } });
-
+                            apinsumo.save({ iduser: obj.req.user.id, transaction: obj.transaction });
+                            const volume = await db.getModel('est_volume').findOne({ transaction: obj.transaction, where: { id: apinsumo.idvolume } });
                             if (volume.metragem) {
                                 volume.metragem = (((parseFloat(apinsumo.qtd)) * parseFloat(volume.metragem)) / parseFloat(apsobras[i].qtd)).toFixed(2);
                             }
-
                             volume.qtdreal = (parseFloat(volume.qtdreal) - parseFloat(apsobras[i].qtd)).toFixed(4);
                             if (parseFloat(volume.qtdreal) == 0) {
                                 volume.consumido = true;
                             }
-                            volume.save({ iduser: obj.req.user.id });
+                            volume.save({ iduser: obj.req.user.id, transaction: obj.transaction });
                         }
-
                         await next(obj);
-
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
@@ -9352,6 +9507,102 @@ let main = {
                         }
                     } catch (err) {
                         return application.fatal(obj.res, err);
+                    }
+                }
+                , e_apontarTintasOP: async (obj) => {
+                    let t;
+                    try {
+                        const query = `select
+                            v.id
+                            , i.descricao as produto
+                            , v.qtdreal as qtd
+                        from
+                            est_volume v
+                        left join pcp_versao ver on (v.idversao = ver.id)
+                        left join cad_item i on (ver.iditem = i.id)
+                        left join est_tpitem tpi on (i.idtpitem = tpi.id)
+                        inner join est_volumereserva vr on (v.id = vr.idvolume)
+                        where
+                            v.consumido = false
+                            and vr.idopetapa = :idopetapa`;
+                        if (obj.req.method == 'GET') {
+                            if (obj.ids.length != 1) {
+                                return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
+                            }
+                            let body = `
+                            <div class="col-md-12">
+                                <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                                    <tr>
+                                        <td style="text-align:center;"><strong>ID</strong></td>
+                                        <td style="text-align:center;"><strong>Insumo</strong></td>
+                                        <td style="text-align:center;"><strong>Quantidade</strong></td>
+                                    </tr>
+                            `;
+                            const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.ids[0] } });
+                            if (!oprecurso) {
+                                return application.error(obj.res, { msg: 'OP não encontrada' });
+                            }
+                            const sql = await db.sequelize.query(query, { type: db.Sequelize.QueryTypes.SELECT, replacements: { idopetapa: oprecurso.idopetapa } });
+                            const ids = [];
+                            for (let i = 0; i < sql.length; i++) {
+                                body += `
+                                    <tr>
+                                        <td style="text-align:center;"> ${sql[i].id}</td>
+                                        <td style="text-align:left;">   ${sql[i].produto}</td>
+                                        <td style="text-align:right;">  ${application.formatters.fe.decimal(sql[i].qtd, 4)}</td>
+                                    </tr>
+                                `;
+                                ids.push(sql[i].id);
+                            }
+                            body += `</table></div>`;
+                            body += application.components.html.hidden({ name: 'ids', value: ids.join(',') });
+                            body += application.components.html.hidden({ name: 'idoprecurso', value: oprecurso.id });
+                            application.success(obj.res, {
+                                modal: {
+                                    form: true
+                                    , action: '/event/' + obj.event.id
+                                    , id: 'modalevt' + obj.event.id
+                                    , title: obj.event.description
+                                    , body: body
+                                    , footer: '<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-primary">Apontar</button>'
+                                }
+                            });
+                        } else {
+                            const invalidfields = application.functions.getEmptyFields(obj.req.body, ['ids', 'idoprecurso']);
+                            if (invalidfields.length > 0) {
+                                return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
+                            }
+                            const volumes = await db.getModel('est_volume').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.req.body.ids.split(',') } } });
+                            t = await db.sequelize.transaction();
+                            for (let i = 0; i < volumes.length; i++) {
+                                const v = volumes[i];
+                                if (v.consumido) {
+                                    t.rollback();
+                                    return application.error(obj.res, { msg: `O volume ${v.id} já está consumido` });
+                                }
+                                await db.getModel('pcp_apinsumo').create({
+                                    iduser: obj.req.user.id
+                                    , idvolume: v.id
+                                    , idoprecurso: obj.req.body.idoprecurso
+                                    , datahora: moment()
+                                    , qtd: v.qtdreal
+                                    , produto: `${v.id} - ${v.pcp_versao.descricaocompleta}`
+                                    , integrado: false
+                                    , recipiente: 'Tinta'
+                                }, { iduser: obj.req.user.id, transaction: t });
+                                v.qtdreal = 0;
+                                v.consumido = true;
+                                await v.save({ iduser: obj.req.user.id, transaction: t });
+                                const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.req.body.idoprecurso } });
+                                await db.getModel('est_volumereserva').update({ apontado: true }, { transaction: t, iduser: obj.req.user.id, where: { idvolume: v.id, idopetapa: oprecurso.idopetapa } });
+                            }
+                            await t.commit();
+                            application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                        }
+                    } catch (err) {
+                        if (t)
+                            t.rollback();
+                        application.fatal(obj.res, err);
                     }
                 }
                 , e_preRequisicao: async (obj) => {
