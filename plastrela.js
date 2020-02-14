@@ -7527,7 +7527,7 @@ let main = {
                                     , qtdreal: qtd
                                 }, { iduser: obj.req.body.iduser });
 
-                                if (tprecurso.codigo = 7) {
+                                if (tprecurso.codigo == 7) {
                                     let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { idoprecurso: oprecurso.id, recipiente: null } });
                                     for (let z = 0; z < apinsumos.length; z++) {
                                         apinsumos[z].recipiente = volume.id;
