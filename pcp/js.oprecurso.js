@@ -62,6 +62,7 @@ $(function () {
                 rfidurl = $('input[name="lrrfid"]').val();
                 balancaurl = $('input[name="lrbalanca"]').val();
                 if ($('input[name="etapa"]').val() == 70) {
+                    totalNaoVinculado = response.totalNaoVinculado;
                     $.get(rfidurl + '/read', function (data) {
                         buscaCodigoBarra('-10-' + data);
                     });
