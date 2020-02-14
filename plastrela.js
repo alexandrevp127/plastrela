@@ -7218,7 +7218,7 @@ let main = {
                                 let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: opr.idopetapa } });
                                 let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
                                 let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa.idtprecurso } });
-                                if (tprecurso.codigo = 7) {
+                                if (tprecurso.codigo == 7) {
                                     db.getModel('pcp_apinsumo').update({ recipiente: null }, { where: { idoprecurso: opr.id, recipiente: '' + volumes[i].id }, iduser: obj.req.user.id });
                                 }
                                 approducao.integrado = false;
