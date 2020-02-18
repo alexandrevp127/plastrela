@@ -3895,7 +3895,7 @@ let main = {
                                 , label: 'Depósito'
                                 , name: 'iddeposito'
                                 , model: 'est_deposito'
-                                , attribute: 'descricao'
+                                , query: `est_deposito.codigo || ' - ' || est_deposito.descricao`
                             });
 
                             return application.success(obj.res, {
