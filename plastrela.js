@@ -995,6 +995,9 @@ let main = {
         }
         , f_coletor: async (email) => {
             try {
+                if (email.from[0].indexOf('@webmail.plastrela.com.br') >= 0) {
+                    return;
+                }
                 let initialIdx = email.subject.indexOf('[ATV#');
                 let finalIdx = email.subject.indexOf(']');
                 if (initialIdx >= 0 && finalIdx >= 0 && initialIdx < finalIdx) { //Existe
@@ -8072,6 +8075,7 @@ let main = {
                                     return application.error(obj.res, { msg: 'Volume não encontrado' });
                                 }
                             case '#':
+                                return application.error(obj.res, { msg: 'Opção desabilitada' });
                                 let bc = obj.data.codigodebarra.substring(1, obj.data.codigodebarra.length).split('-');
                                 let item = await db.getModel('cad_item').findOne({ where: { codigo: bc[0].split('/')[0] } })
                                 if (!item) {
