@@ -995,7 +995,7 @@ let main = {
         }
         , f_coletor: async (email) => {
             try {
-                if (email.from[0].indexOf('@webmail.plastrela.com.br') >= 0) {
+                if (email.from[0].includes('@webmail.plastrela.com.br')) {
                     return;
                 }
                 let initialIdx = email.subject.indexOf('[ATV#');
