@@ -2852,6 +2852,15 @@ let main = {
                                     <td style="text-align:left;">   ${ostec.nota} </td>
                                 </tr>`;
                             }
+                            if (ostecs.length <= 0) {
+                                report.tabletecnicos += `
+                                <tr>
+                                    <td style="text-align:center;width:20%;"> </td>
+                                    <td style="text-align:center;"> </td>
+                                    <td style="text-align:center;"> </td>
+                                    <td style="text-align:left;width:40%;">  <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/> </td>
+                                </tr>`;
+                            }
                             report.tabletecnicos += '</table>';
 
                             reportAll.push(report);
