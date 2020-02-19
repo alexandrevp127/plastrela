@@ -3044,11 +3044,12 @@ let main = {
                     await main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync_sped/Job.kjb`);
                     let body = '';
                     body += application.components.html.autocomplete({
-                        width: '12'
+                        width: 12
                         , label: 'Depósito'
-                        , name: 'deposito'
+                        , name: 'iddeposito'
                         , model: 'est_deposito'
-                        , attribute: 'descricao'
+                        , query: `est_deposito.codigo || ' - ' || est_deposito.descricao`
+                        , where: `est_deposito.ativo = true`
                     });
                     body += application.components.html.text({
                         width: 12
@@ -3896,6 +3897,7 @@ let main = {
                                 , name: 'iddeposito'
                                 , model: 'est_deposito'
                                 , query: `est_deposito.codigo || ' - ' || est_deposito.descricao`
+                                , where: `est_deposito.ativo = true`
                             });
 
                             return application.success(obj.res, {
@@ -7588,7 +7590,14 @@ let main = {
                         if (obj.ids.length != 1) {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
-                        const volume = await db.getModel('est_volume').findOne({ where: { idapproducaovolume: obj.ids[0] } })
+                        const approducaovolume = await db.getModel('pcp_approducaovolume').findOne({ where: { id: obj.ids[0] } });
+                        const approducao = await db.getModel('pcp_approducao').findOne({ where: { id: approducaovolume.idapproducao } });
+                        const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: approducao.idoprecurso } });
+                        const opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
+                        const op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
+                        const produtoop = await db.getModel('pcp_versao').findOne({ where: { id: op.idversao } });
+                        const opmae = await db.getModel('pcp_op').findOne({ where: { id: op.idopmae || 0 } });
+                        const volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { idapproducaovolume: approducaovolume.id } })
                         const needle = require('needle');
                         const param = await main.platform.parameter.f_get('localresource_' + obj.req.user.id);
                         if (!param) {
@@ -7601,6 +7610,25 @@ let main = {
                                 break;
                             }
                         }
+                        const hora = application.formatters.fe.datetime(volume.datahora).split(' ')[1].split(':');
+                        const horaint = parseInt((hora[0] * 60)) + parseInt(hora[1]);
+                        let turno = '';
+                        if (horaint >= 415 && horaint <= 915) {
+                            turno = 'A';
+                        } else if (horaint >= 916 && horaint <= 1400) {
+                            turno = 'B';
+                        } else {
+                            turno = 'C';
+                        }
+                        await needle('get', `${param.zebra}/print`,
+                            {
+                                id: volume.id
+                                , opmae: opmae.op
+                                , data: application.formatters.fe.date(volume.datahora)
+                                , produto: produtoop.descricaocompleta
+                                , cor: volume.pcp_versao.descricaocompleta
+                                , turno: turno
+                            });
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);
