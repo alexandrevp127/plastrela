@@ -557,7 +557,7 @@
     <operation_order_field>flagfield</operation_order_field>
     <order_insert>new</order_insert>
     <order_update>changed</order_update>
-    <order_delete>deleted</order_delete>
+    <order_delete/>
     <lookup>
       <schema/>
       <table>est_deposito</table>
@@ -629,7 +629,7 @@
            <schema_name/>
            </partitioning>
     <connection>SIPv2</connection>
-    <sql>select ativo, codigo, descricao from est_deposito</sql>
+    <sql>select ativo, codigo, descricao from est_deposito where codigo &#x3e; 0</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
