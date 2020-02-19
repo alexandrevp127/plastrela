@@ -3046,7 +3046,7 @@ let main = {
                     body += application.components.html.autocomplete({
                         width: 12
                         , label: 'Depósito'
-                        , name: 'iddeposito'
+                        , name: 'deposito'
                         , model: 'est_deposito'
                         , query: `est_deposito.codigo || ' - ' || est_deposito.descricao`
                         , where: `est_deposito.ativo = true`
