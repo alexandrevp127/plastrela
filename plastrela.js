@@ -8181,7 +8181,6 @@ let main = {
                         let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
                         let deposito = await db.getModel('est_deposito').findOne({ where: { id: volume.iddeposito } });
                         let qtd = application.formatters.be.decimal(obj.data.qtd);
-                        let qtdreal = parseFloat(volume.qtdreal);
 
                         // let sql = await db.sequelize.query(`
                         // select 
@@ -8201,14 +8200,19 @@ let main = {
                         //     return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idsubstituto'] });
                         // }
 
-                        if (deposito && deposito.descricao == 'Almoxarifado') {
+                        if (deposito && deposito.codigo == 5) {
                             return application.error(obj.res, { msg: 'Não é possível consumir volumes que estão no almoxarifado' });
                         }
                         if (qtd <= 0) {
                             return application.error(obj.res, { msg: 'A quantidade apontada deve ser maior que 0', invalidfields: ['qtd'] });
                         }
-                        if (qtd > qtdreal) {
-                            return application.error(obj.res, { msg: 'Verifique a quantidade apontada', invalidfields: ['qtd'] });
+                        if (qtd > volume.qtdreal) {
+                            let dif = parseFloat((qtd - volume.qtdreal).toFixed(4));
+                            if (etapa.codigo == 70 && dif <= 0.3) {
+                                volume.qtdreal += dif;
+                            } else {
+                                return application.error(obj.res, { msg: 'Verifique a quantidade apontada', invalidfields: ['qtd'] });
+                            }
                         }
                         if (!user.code) {
                             return application.error(obj.res, { msg: 'Usuário/Operador Inválido', invalidfields: ['iduser'] });
@@ -8261,8 +8265,9 @@ let main = {
                         }
                         volume.iddeposito = recurso.iddepositoprodutivo;
                         volume.iddepositoendereco = null;
-                        volume.qtdreal = (qtdreal - qtd).toFixed(4);
-                        if (parseFloat(volume.qtdreal) == 0) {
+                        volume.qtdreal = (volume.qtdreal - qtd).toFixed(4);
+                        if (parseFloat(volume.qtdreal) <= 0) {
+                            volume.qtdreal = 0;
                             volume.consumido = true;
                         }
 
@@ -8790,7 +8795,7 @@ let main = {
                         }
                         let volume = await db.getModel('est_volume').findOne({ where: { id: obj.data.idvolume } });
                         let deposito = await db.getModel('est_deposito').findOne({ where: { id: volume.iddeposito } });
-                        if (deposito && deposito.descricao == 'Almoxarifado') {
+                        if (deposito && deposito.codigo == 5) {
                             return application.error(obj.res, { msg: 'Não é possível consumir volumes que estão no almoxarifado' });
                         }
 
