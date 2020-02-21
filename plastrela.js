@@ -3398,6 +3398,18 @@ let main = {
                     return application.fatal(obj.res, err);
                 }
             }
+            , confsaldo: {
+                e_sincronizar: async (obj) => {
+                    try {
+                        const config = await db.getModel('config').findOne();
+                        const empresa = config.cnpj == "90816133000123" ? 2 : 1;
+                        await main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync/JobConfSaldo.kjb`);
+                        return application.success(obj.res, { msg: application.message.success, reloadtables: true });
+                    } catch (err) {
+                        return application.fatal(obj.res, err);
+                    }
+                }
+            }
             , est_volume: {
 
                 _imprimirEtiqueta: async function (obj) {
@@ -7939,6 +7951,9 @@ let main = {
                 __adicionarModal: async function (obj) {
 
                     let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
+                    if (!oprecurso) {
+                        return application.error(obj.res, { msg: 'OP inválida, favor retornar a listagem e abrir novamente' });
+                    }
                     let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso ? oprecurso.idopetapa : 0 } });
                     let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa ? opetapa.idetapa : 0 } });
                     let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa ? etapa.idtprecurso : 0 } });
@@ -9495,6 +9510,9 @@ let main = {
                                 return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: invalidfields });
                             }
                             let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.req.body.id } });
+                            if (!oprecurso) {
+                                return application.error(obj.res, { msg: 'A OP selecionada não existe, atualize a listagem e tente novamente' });
+                            }
                             let opr = await db.getModel('pcp_oprecurso').create({
                                 idestado: 1
                                 , idopetapa: oprecurso.idopetapa
