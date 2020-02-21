@@ -1641,7 +1641,7 @@
     <operation_order_field>flagfield</operation_order_field>
     <order_insert>new</order_insert>
     <order_update>changed</order_update>
-    <order_delete/>
+    <order_delete>deleted</order_delete>
     <lookup>
       <schema/>
       <table>ven_embarque</table>
