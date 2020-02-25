@@ -998,23 +998,26 @@ let main = {
                 if (email.from[0].address.includes('@webmail.plastrela.com.br')) {
                     return;
                 }
-                let initialIdx = email.subject.indexOf('[ATV#');
-                let finalIdx = email.subject.indexOf(']');
+                const initialIdx = email.subject.indexOf('[ATV#');
+                const finalIdx = email.subject.indexOf(']');
                 if (initialIdx >= 0 && finalIdx >= 0 && initialIdx < finalIdx) { //Existe
-                    let id = email.subject.substring(initialIdx + 5, finalIdx);
-                    id = parseInt(id);
+                    const id = parseInt(email.subject.substring(initialIdx + 5, finalIdx));
                     if (id > 0) {
-                        let atividade = await db.getModel('atv_atividade').findOne({ include: [{ all: true }], where: { id: id } });
-                        let user = await db.getModel('users').findOne({ where: { email: email.from[0].address } });
+                        const atividade = await db.getModel('atv_atividade').findOne({ include: [{ all: true }], where: { id: id } });
+                        const user = await db.getModel('users').findOne({ where: { email: email.from[0].address } });
                         if (atividade) {
                             if (atividade.encerrada) {
-                                let status_inicial = await db.getModel('atv_tipo_status').findOne({ where: { idtipo: atividade.idtipo, inicial: true } });
+                                atividade.datahora_previsao = null;
+                                atividade.datahora_previsaofim = null;
+                                atividade.datahora_termino = null;
+                                atividade.encerrada = false;
+                                const status_inicial = await db.getModel('atv_tipo_status').findOne({ where: { idtipo: atividade.idtipo, inicial: true } });
                                 if (status_inicial) {
-                                    atividade.idstatus = status_inicial.id;
-                                    atividade.save();
+                                    atividade.idstatus = status_inicial.idstatus;
                                 }
+                                atividade.save();
                             }
-                            let nota = await db.getModel('atv_atividadenota').create({
+                            const nota = await db.getModel('atv_atividadenota').create({
                                 idatividade: atividade.id
                                 , datahora: moment()
                                 , descricao: email.html
@@ -1024,12 +1027,12 @@ let main = {
                             });
                             let html = nota.descricao;
                             if (email.attachments && email.attachments.length > 0) {
-                                let files = [];
-                                let modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividade' } });
+                                const files = [];
+                                const modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividade' } });
                                 for (let i = 0; i < email.attachments.length; i++) {
                                     let type = email.attachments[i].fileName.split('.');
                                     type = type[type.length - 1];
-                                    let file = await db.getModel('file').create({
+                                    const file = await db.getModel('file').create({
                                         filename: email.attachments[i].fileName
                                         , size: email.attachments[i].length
                                         , bounded: true
@@ -1041,7 +1044,7 @@ let main = {
                                         , idmodel: modelatv.id
                                         , public: false
                                     });
-                                    let attach = email.attachments[i];
+                                    const attach = email.attachments[i];
                                     fs.writeFile(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${file.id}.${type}`, attach.content, function (err) { });
                                     if (html.indexOf('cid:' + email.attachments[i].contentId) < 0) {
                                         files.push(file);
@@ -1066,8 +1069,8 @@ let main = {
                                     , link: '/v/atividade/' + atividade.id
                                 });
                             } else {
-                                let usersnotification = []
-                                let su = await db.getModel('cad_setorusuario').findAll({ include: [{ all: true }], where: { idsetor: atividade.atv_tipo.idsetor } });
+                                const usersnotification = []
+                                const su = await db.getModel('cad_setorusuario').findAll({ include: [{ all: true }], where: { idsetor: atividade.atv_tipo.idsetor } });
                                 for (let i = 0; i < su.length; i++) {
                                     usersnotification.push(su[i].idusuario);
                                 }
@@ -1080,9 +1083,9 @@ let main = {
                         }
                     }
                 } else { // Novo
-                    let tipo = await db.getModel('atv_tipo').findOne({ where: { descricaocompleta: 'TI - Não Classificado' } });
-                    let status_inicial = await db.getModel('atv_tipo_status').findOne({ include: [{ all: true }], where: { idtipo: tipo.id, inicial: true } });
-                    let user = (await db.getModel('users').findOrCreate({ where: { email: email.from[0].address } }))[0];
+                    const tipo = await db.getModel('atv_tipo').findOne({ where: { descricaocompleta: 'TI - Não Classificado' } });
+                    const status_inicial = await db.getModel('atv_tipo_status').findOne({ include: [{ all: true }], where: { idtipo: tipo.id, inicial: true } });
+                    const user = (await db.getModel('users').findOrCreate({ where: { email: email.from[0].address } }))[0];
                     if (!user.fullname) {
                         user.fullname = email.from[0].name;
                         user.save();
@@ -1100,7 +1103,7 @@ let main = {
                         });
                         let html = atividade.descricao || '';
                         // Participantes
-                        let j = JSON.parse(email._messenger.conf);
+                        const j = JSON.parse(email._messenger.conf);
                         // to
                         if (email.to.length > 0) {
                             for (let i = 0; i < email.to.length; i++) {
