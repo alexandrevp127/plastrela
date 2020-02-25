@@ -11649,6 +11649,80 @@ let main = {
                 }
             }
         }
+        , qualidade: {
+            assistencia: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (obj.register.tipo == 'Problema na Embalagem' && !obj.register.numero_nf) {
+                            return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['numero_nf'] });
+                        }
+                        if (obj.register.prioridade == 'Urgente' && !obj.register.motivo_urgencia) {
+                            return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['motivo_urgencia'] });
+                        }
+                        let temalgum = false;
+                        if (obj.register.datahora_saidaempresa
+                            || obj.register.datahora_chegadacliente
+                            || obj.register.datahora_saidacliente
+                            || obj.register.datahora_chegadaempresa
+                            || obj.register.contatoassistente
+                            || obj.register.servicoexecutado
+                            || obj.register.conclusao) {
+                            temalgum = true;
+                        }
+                        if (temalgum) {
+                            if (obj.register.datahora_saidaempresa == null
+                                || obj.register.datahora_chegadacliente == null
+                                || obj.register.datahora_saidacliente == null
+                                || obj.register.datahora_chegadaempresa == null
+                                || obj.register.contatoassistente == null
+                                || obj.register.servicoexecutado == null
+                                || obj.register.conclusao == null) {
+                                return application.error(obj.res, { msg: 'O Formulário de Atendimento deve ser preenchido totalmente antes de salvar' });
+                            }
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , e_imprimir: async (obj) => {
+                    try {
+                        if (obj.ids.length <= 0) {
+                            return application.error(obj.res, { msg: application.message.selectOneEvent });
+                        }
+                        const assistencias = await main.platform.model.findAll('iso_assistencia', { where: { id: { [db.Op.in]: obj.ids } } });
+                        const reports = [];
+                        for (let i = 0; i < assistencias.count; i++) {
+                            const el = assistencias.rows[i];
+                            // console.log(el);
+                            const report = {};
+                            report.id = el.id;
+                            report.solicitante = el.iduser_solicitante;
+                            report.cliente = el.idcorrentista;
+                            report.local = el.idcidade;
+                            report.tipo = el.tipo;
+                            report.produto = el.idversao;
+                            report.saida_empresa = el.datahora_saidaempresa;
+                            report.chegada_cliente = el.datahora_chegadacliente;
+                            report.saida_cliente = el.datahora_saidacliente;
+                            report.chegada_empresa = el.datahora_chegadaempresa;
+                            report.motivo = el.descricao_problema.replace(/(\r\n|\n|\r)/g, '<br>');
+                            report.contato = el.contatoassistente.replace(/(\r\n|\n|\r)/g, '<br>');
+                            report.servico = el.servicoexecutado.replace(/(\r\n|\n|\r)/g, '<br>');
+                            report.observacao = el.conclusao.replace(/(\r\n|\n|\r)/g, '<br>');
+                            report.assistente = el.iduser_responsavel;
+                            reports.push(report);
+                        }
+                        let filename = await main.platform.report.f_generate('Qualidade - Assistência', reports);
+                        return application.success(obj.res, {
+                            openurl: '/download/' + filename
+                        });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
+        }
         , rh: {
             curriculo: {
                 onsave: async function (obj, next) {
@@ -12001,7 +12075,7 @@ let main = {
                             for (let i = 0; i < embs.count; i++) {
                                 main.platform.notification.create(notificacao, {
                                     title: 'Confirmação Pendente'
-                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao}`
+                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao} - ${obj.req.user.fullname}`
                                     , link: '/v/entrega/' + embs.rows[i].id
                                 });
                             }
@@ -12064,7 +12138,7 @@ let main = {
                             for (let i = 0; i < embs.count; i++) {
                                 main.platform.notification.create(notificacao, {
                                     title: 'Confirmação Realizada'
-                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao}`
+                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao} - ${obj.req.user.fullname}`
                                     , link: '/v/entrega/' + embs.rows[i].id
                                 });
                             }
@@ -12127,7 +12201,7 @@ let main = {
                             for (let i = 0; i < embs.count; i++) {
                                 main.platform.notification.create(notificacao, {
                                     title: moment().format(application.formatters.fe.date_format) == embs.rows[i].previsaodata ? 'EMBARQUE IMEDIATO' : 'Confirmação Entrega'
-                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao}`
+                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao} - ${obj.req.user.fullname}`
                                 });
                             }
                         }
@@ -12227,7 +12301,7 @@ let main = {
                             for (let i = 0; i < embs.count; i++) {
                                 main.platform.notification.create(notificacao, {
                                     title: 'Retirada Desaprovada'
-                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao}`
+                                    , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao} - ${obj.req.user.fullname}`
                                 });
                             }
                         }
