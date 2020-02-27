@@ -3950,8 +3950,9 @@ let main = {
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
                     } catch (err) {
-                        t.rollback();
-                        return application.fatal(obj.res, err);
+                        if (t)
+                            t.rollback();
+                        application.fatal(obj.res, err);
                     }
                 }
                 , e_consumir: async function (obj) {
@@ -5067,7 +5068,8 @@ let main = {
                             application.success(obj.res, { msg: `Gerado ID ${newv.id}`, reloadtables: true });
                         }
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         application.fatal(obj.res, err);
                     }
                 }
@@ -5415,7 +5417,8 @@ let main = {
                             });
                         }
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         return application.fatal(obj.res, err);
                     }
                 }
@@ -5425,19 +5428,16 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-
-                        t = await db.sequelize.transaction();
                         let requisicoes = await db.getModel('est_requisicaovolume').findAll({ include: [{ all: true }], where: { id: { [db.Op.in]: obj.ids } } });
-
                         for (let i = 0; i < requisicoes.length; i++) {
                             if (!requisicoes[i].datahoraatendido) {
                                 return application.error(obj.res, { msg: `A requisição ${requisicoes[i].id} não foi atendida` });
                             }
                         }
-
                         let config = await db.getModel('config').findOne();
                         let empresa = config.cnpj == "90816133000123" ? 2 : 1;
 
+                        t = await db.sequelize.transaction();
                         for (let i = 0; i < requisicoes.length; i++) {
                             let volume = await db.getModel('est_volume').findOne({ include: [{ all: true }], where: { id: requisicoes[i].idvolume } });
                             if (parseFloat(volume.qtdreal) != parseFloat(requisicoes[i].qtd)) {
@@ -5466,7 +5466,8 @@ let main = {
                         await t.commit();
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         return application.fatal(obj.res, err);
                     }
                 }
@@ -5677,7 +5678,8 @@ let main = {
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         return application.fatal(obj.res, err);
                     }
                 }
@@ -5712,7 +5714,8 @@ let main = {
                         await t.commit();
                         application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         application.fatal(obj.res, err);
                     }
                 }
@@ -5749,7 +5752,8 @@ let main = {
                         await t.commit();
                         application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         application.fatal(obj.res, err);
                     }
                 }
@@ -6969,7 +6973,7 @@ let main = {
                         }
                         await next(obj);
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
                 , js_dataUltimoAp: async function (obj) {
@@ -6985,7 +6989,7 @@ let main = {
                             return application.success(obj.res, { data: '' });
                         }
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
             }
@@ -7711,7 +7715,8 @@ let main = {
                         await t.commit();
                         application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         application.fatal(obj.res, err);
                     }
                 }
@@ -8427,6 +8432,7 @@ let main = {
                         }
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumos[0].idoprecurso } });
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
+                        const etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
                         let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
 
                         for (let i = 0; i < apinsumos.length; i++) {
@@ -8464,7 +8470,7 @@ let main = {
                         if (deleted.success) {
                             let gconfig = await db.getModel('config').findOne();
                             let misturas = await db.getModel('est_volumemistura').findAll({ where: { idvolume: apinsumos[0].idvolume } });
-                            if (misturas.length > 0) {
+                            if (etapa.codigo == 10 && misturas.length > 0) {
                                 for (let i = 0; i < misturas.length; i++) {
                                     await db.getModel('pcp_apintegracao').create({
                                         integrado: false
@@ -9761,7 +9767,8 @@ let main = {
                             return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                         }
                     } catch (err) {
-                        t.rollback();
+                        if (t)
+                            t.rollback();
                         return application.fatal(obj.res, err);
                     }
                 }
