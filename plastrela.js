@@ -998,8 +998,9 @@ let main = {
                 if (email.from[0].address.includes('@webmail.plastrela.com.br')) {
                     return;
                 }
-                const initialIdx = email.subject.indexOf('[ATV#');
-                const finalIdx = email.subject.indexOf(']');
+
+                const initialIdx = email.subject ? email.subject.indexOf('[ATV#') : -1;
+                const finalIdx = email.subject ? email.subject.indexOf(']') : -1;
                 if (initialIdx >= 0 && finalIdx >= 0 && initialIdx < finalIdx) { //Existe
                     const id = parseInt(email.subject.substring(initialIdx + 5, finalIdx));
                     if (id > 0) {
@@ -1088,12 +1089,12 @@ let main = {
                     const user = (await db.getModel('users').findOrCreate({ where: { email: email.from[0].address } }))[0];
                     if (!user.fullname) {
                         user.fullname = email.from[0].name;
-                        user.save();
+                        await user.save();
                     }
                     if (tipo && status_inicial) {
-                        let atividade = await db.getModel('atv_atividade').create({
+                        const atividade = await db.getModel('atv_atividade').create({
                             iduser_criacao: user.id
-                            , assunto: email.subject
+                            , assunto: email.subject || null
                             , descricao: email.html
                             , idtipo: tipo.id
                             , idstatus: status_inicial.idstatus
@@ -1108,7 +1109,7 @@ let main = {
                         if (email.to.length > 0) {
                             for (let i = 0; i < email.to.length; i++) {
                                 if (j.username != email.to[i].address) {
-                                    let participante = (await db.getModel('users').findOrCreate({ where: { email: email.to[i].address } }))[0];
+                                    const participante = (await db.getModel('users').findOrCreate({ where: { email: email.to[i].address } }))[0];
                                     if (!participante.fullname) {
                                         participante.fullname = email.to[i].name || email.to[i].address;
                                         await participante.save();
@@ -1124,7 +1125,7 @@ let main = {
                         if (email.cc && email.cc.length > 0) {
                             for (let i = 0; i < email.cc.length; i++) {
                                 if (j.username != email.cc[i].address) {
-                                    let participante = (await db.getModel('users').findOrCreate({ where: { email: email.cc[i].address } }))[0];
+                                    const participante = (await db.getModel('users').findOrCreate({ where: { email: email.cc[i].address } }))[0];
                                     if (!participante.fullname) {
                                         participante.fullname = email.cc[i].name || email.cc[i].address;
                                         await participante.save();
@@ -1138,13 +1139,13 @@ let main = {
                         }
                         // Anexo
                         if (email.attachments && email.attachments.length > 0) {
-                            let files = [];
-                            let modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividade' } });
+                            const files = [];
+                            const modelatv = await db.getModel('model').findOne({ where: { name: 'atv_atividade' } });
                             for (let i = 0; i < email.attachments.length; i++) {
                                 if (email.attachments[i].fileName) {
                                     let type = email.attachments[i].fileName.split('.');
                                     type = type[type.length - 1];
-                                    let file = await db.getModel('file').create({
+                                    const file = await db.getModel('file').create({
                                         filename: email.attachments[i].fileName
                                         , size: email.attachments[i].length
                                         , bounded: true
@@ -1155,7 +1156,7 @@ let main = {
                                         , iduser: user ? user.id : null
                                         , idmodel: modelatv.id
                                     });
-                                    let attach = email.attachments[i];
+                                    const attach = email.attachments[i];
                                     fs.writeFile(`${__dirname}/../../files/${process.env.NODE_APPNAME}/${file.id}.${type}`, attach.content, function (err) { });
                                     if (html.indexOf('cid:' + email.attachments[i].contentId) < 0) {
                                         files.push(file);
