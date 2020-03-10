@@ -1094,7 +1094,7 @@ let main = {
                     if (tipo && status_inicial) {
                         const atividade = await db.getModel('atv_atividade').create({
                             iduser_criacao: user.id
-                            , assunto: email.subject || null
+                            , assunto: email.subject || 'Sem Assunto'
                             , descricao: email.html
                             , idtipo: tipo.id
                             , idstatus: status_inicial.idstatus
@@ -6379,7 +6379,7 @@ let main = {
                                     , value: regs.rows[i].idversao || ''
                                     , disabled: 'disabled="disabled"'
                                 });
-                                let anilox = await db.getModel('est_anilox').findOne({ where: { id: regs.original[i].idanilox || 0 } });
+                                const anilox = await db.getModel('est_anilox').findOne({ where: { id: regs.original[i]['est_anilox.id'] || 0 } });
                                 body += application.components.html.autocomplete({
                                     width: '3'
                                     , label: 'Anilox'

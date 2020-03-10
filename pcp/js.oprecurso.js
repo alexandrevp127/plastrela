@@ -416,7 +416,7 @@ $(function () {
             });
             $('#col-setup-impressao').removeClass('hidden');
         }
-        if (['20', '30', '35', '80', '800'].indexOf($('input[name="etapa"]').val()) >= 0) {
+        if ([20, 30, 35, 80, 800].indexOf(parseInt($('input[name="etapa"]').val())) >= 0) {
             $ul.prepend('<li><a id="chamarCQ" href="javascript:void(0)"><i class="fa fa-certificate"></i> Chamar CQ</a></li>');
             $('#chamarCQ').click(function () {
                 application.jsfunction('plastrela.pcp.oprecurso.js_chamarCQModal', { idoprecurso: application.functions.getId() }, function (response) {
@@ -433,7 +433,7 @@ $(function () {
         }
 
         // Apenas Laminação
-        if (['30', '31', '35', '300', '350'].indexOf($('input[name="etapa"]').val()) >= 0) {
+        if ([30, 31, 35, 300, 350].indexOf(parseInt($('input[name="etapa"]').val())) >= 0) {
             application.jsfunction('plastrela.pcp.oprecurso.js_testeCuraAcelerada', { idoprecurso: application.functions.getId() }, function (response) {
                 if (!response.data) {
                     application.functions.confirmMessage('Foi realizado o teste de Cura Acelerada da produção concluída em <b>' + response.datahora + '</b>?', function () {
@@ -443,6 +443,7 @@ $(function () {
                     });
                 }
             });
+            $('#col-setup-laminacao').removeClass('hidden');
         }
 
         if (localStorage.getItem('descriptionmenumini') == 'RS') {
@@ -521,7 +522,11 @@ $(function () {
                 $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
             }, 1000);
         });
-
+        $('.btn-lam-show').click(function () {
+            setTimeout(function () {
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+            }, 1000);
+        });
     }
 
 });
