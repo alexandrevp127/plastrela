@@ -444,6 +444,7 @@ $(function () {
                 }
             });
             $('#col-setup-laminacao').removeClass('hidden');
+            $('select[name="lam_camisa"]').attr('data-where', 'idrecurso = ' + $('select[name="idrecurso"]').val())
         }
 
         if (localStorage.getItem('descriptionmenumini') == 'RS') {
