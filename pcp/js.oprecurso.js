@@ -473,6 +473,9 @@ $(function () {
                     case 'Valor':
                         $('input[name="confresulvalor"]').removeClass('hidden');
                         break;
+                    case 'Decimal':
+                        $('input[name="confresuldecimal"]').removeClass('hidden');
+                        break;
                     case 'Combo':
                         $('select[name="confresulcombo"]').find('option').remove();
                         var options = response.data.combo.split(',');
@@ -496,8 +499,9 @@ $(function () {
                 , confatributo: $('select[name="confatributo"]').val()
                 , confresul: atributotipo == 'Texto' ? $('input[name="confresultexto"]').val() :
                     atributotipo == 'Valor' ? $('input[name="confresulvalor"]').val() :
-                        atributotipo == 'Combo' ? $('select[name="confresulcombo"]').val()
-                            : ''
+                        atributotipo == 'Decimal' ? $('input[name="confresuldecimal"]').val() :
+                            atributotipo == 'Combo' ? $('select[name="confresulcombo"]').val()
+                                : ''
                 , confobs: $('input[name="confobs"]').val()
             }, function (response) {
                 application.handlers.responseSuccess(response);
@@ -506,6 +510,7 @@ $(function () {
                     $('.confresult').addClass('hidden');
                     $('input[name="confresultexto"]').val('');
                     $('input[name="confresulvalor"]').val('');
+                    $('input[name="confresuldecimal"]').val('');
                     $('input[name="confobs"]').val('');
                 }
             });
