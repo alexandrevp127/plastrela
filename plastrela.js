@@ -8395,9 +8395,14 @@ let main = {
                             if (!preap.success) {
                                 return application.error(obj.res, { msg: preap.msg });
                             }
+                            const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: api.idoprecurso } });
+                            const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
                             const v = await db.getModel('est_volume').findOne({ where: { id: api.idvolume } });
                             if (!v) {
                                 return application.error(obj.res, { msg: 'Volume não encontrado' });
+                            }
+                            if (recurso.iddepositoprodutivo != v.iddeposito) {
+                                return application.error(obj.res, { msg: `O Volume ID ${v.id} não está mais no depósito: ${recurso.est_deposito.descricao}` });
                             }
                             t = await db.sequelize.transaction();
                             api.qtd -= qtd;
@@ -8427,31 +8432,31 @@ let main = {
                             return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
                         }
                         const config = await db.getModel('pcp_config').findOne();
-                        let apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
+                        const apinsumos = await db.getModel('pcp_apinsumo').findAll({ where: { id: { [db.Op.in]: obj.ids } }, include: [{ all: true }] });
                         if (apinsumos.length <= 0) {
                             return application.error(obj.res, { msg: 'Os apontamentos selecionados já foram excluídos, entre novamente na OP' });
                         }
-                        let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumos[0].idoprecurso } });
-                        let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
+                        const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumos[0].idoprecurso } });
+                        const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
+                        const opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         const etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
-                        let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
+                        // let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
 
                         for (let i = 0; i < apinsumos.length; i++) {
                             if (apinsumos[i].pcp_oprecurso.idestado == config.idestadoencerrada) {
                                 return application.error(obj.res, { msg: 'Não é possível apagar apontamentos de OP encerrada' });
                             }
-                            let apretorno = await db.getModel('pcp_apretorno').findOne({ where: { idoprecurso: apinsumos[i].idoprecurso, estacao: apinsumos[i].recipiente } });
-                            if (apretorno) {
-                                return application.error(obj.res, { msg: 'Não é possível apagar insumos com retornos gerados sobre este recipiente' });
+                            if (recurso.iddepositoprodutivo != apinsumos[i].est_volume.iddeposito) {
+                                return application.error(obj.res, { msg: `O Volume ID ${apinsumos[i].est_volume.id} não está mais no depósito: ${recurso.est_deposito.descricao}` });
                             }
                         }
 
-                        let volumes = [];
+                        const volumes = [];
                         let volumesreservas = [];
                         for (let i = 0; i < apinsumos.length; i++) {
-                            let apinsumo = apinsumos[i];
-                            let volume = await db.getModel('est_volume').findOne({ where: { id: apinsumo.idvolume } });
-                            let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
+                            const apinsumo = apinsumos[i];
+                            const volume = await db.getModel('est_volume').findOne({ where: { id: apinsumo.idvolume } });
+                            const volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
 
                             // if (volume.metragem) {
                             //     volume.metragem = ((parseFloat(volume.qtdreal) + parseFloat(apinsumo.qtd)) * parseFloat(volume.metragem)) / parseFloat(volume.qtdreal).toFixed(2);
@@ -8467,10 +8472,10 @@ let main = {
                             volumesreservas = volumesreservas.concat(volumereservas);
                         }
 
-                        let deleted = await next(obj);
+                        const deleted = await next(obj);
                         if (deleted.success) {
-                            let gconfig = await db.getModel('config').findOne();
-                            let misturas = await db.getModel('est_volumemistura').findAll({ where: { idvolume: apinsumos[0].idvolume } });
+                            const gconfig = await db.getModel('config').findOne();
+                            const misturas = await db.getModel('est_volumemistura').findAll({ where: { idvolume: apinsumos[0].idvolume } });
                             if (etapa.codigo == 10 && misturas.length > 0) {
                                 for (let i = 0; i < misturas.length; i++) {
                                     await db.getModel('pcp_apintegracao').create({
@@ -8501,107 +8506,6 @@ let main = {
                     }
                 }
             }
-            , apretorno: {
-                onsave: async function (obj, next) {
-                    try {
-
-                        if (obj.register.id == 0) {
-
-                            let apinsumos = await db.getModel('pcp_apinsumo').findAll({
-                                where: {
-                                    idoprecurso: obj.register.idoprecurso
-                                    , recipiente: obj.register.estacao
-                                }
-                            });
-
-                            if (apinsumos.length <= 0) {
-                                return application.error(obj.res, { msg: 'Esta estação não foi apontada nos insumos desta OP' });
-                            } else {
-
-                                let sum = 0;
-                                for (let i = 0; i < apinsumos.length; i++) {
-                                    sum += parseFloat(apinsumos[i].qtd);
-                                }
-
-                                let info = [];
-                                for (let i = 0; i < apinsumos.length; i++) {
-                                    let perc = parseFloat(apinsumos[i].qtd) / sum;
-                                    let qtd = (parseFloat(obj.register.qtd) * perc).toFixed(4);
-                                    apinsumos[i].qtd = (parseFloat(apinsumos[i].qtd) - parseFloat(qtd)).toFixed(4);
-                                    info.push({ idinsumo: apinsumos[i].id, qtd: qtd })
-                                    await apinsumos[i].save({ iduser: obj.req.user.id });
-                                }
-                                obj.register.info = JSON.stringify(info);
-                            }
-
-                            let saved = await next(obj);
-
-                            let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.register.idoprecurso } });
-                            let recurso = await db.getModel('pcp_recurso').findOne({ where: { id: oprecurso.idrecurso } });
-                            let deposito = await db.getModel('est_deposito').findOne({ where: { id: recurso.iddepositoprodutivo } });
-
-                            db.getModel('est_volume').create({
-                                idapretorno: saved.register.id
-                                , idversao: saved.register.idversao
-                                , iddeposito: deposito.id
-                                , iduser: obj.req.user.id
-                                , datahora: moment()
-                                , qtd: saved.register.qtd
-                                , consumido: false
-                                , qtdreal: saved.register.qtd
-                            }, { iduser: obj.req.user.id });
-                        } else {
-                            return application.error(obj.res, { msg: 'Não é permitido a edição em retornos, exclua se necessário' });
-                        }
-
-                    } catch (err) {
-                        return application.fatal(obj.res, err);
-                    }
-                }
-                , ondelete: async function (obj, next) {
-                    try {
-
-                        if (obj.ids.length != 1) {
-                            return application.error(obj.res, { msg: application.message.selectOnlyOneEvent });
-                        }
-
-                        let apretorno = await db.getModel('pcp_apretorno').findOne({ where: { id: obj.ids[0] } });
-
-                        let info = JSON.parse(apretorno.info);
-
-                        for (let i = 0; i < info.length; i++) {
-                            let apinsumo = await db.getModel('pcp_apinsumo').findOne({ where: { id: info[i].idinsumo } });
-                            apinsumo.qtd = (parseFloat(apinsumo.qtd) + parseFloat(info[i].qtd)).toFixed(4);
-                            await apinsumo.save({ iduser: obj.req.user.id });
-                        }
-
-                        let volume = await db.getModel('est_volume').findOne({ where: { idapretorno: obj.ids[0] } });
-                        await volume.destroy();
-
-                        await next(obj);
-
-                    } catch (err) {
-                        return application.fatal(obj.res, err);
-                    }
-                }
-                , e_imprimirEtiquetas: async function (obj) {
-                    try {
-                        if (obj.ids.length <= 0) {
-                            return application.error(obj.res, { msg: application.message.selectOneEvent });
-                        }
-                        let ids = [];
-                        let results = await db.sequelize.query('select v.id from pcp_apretorno apr left join est_volume v on (apr.id = v.idapretorno) where apr.id in (' + obj.ids.join(',') + ')', { type: db.sequelize.QueryTypes.SELECT });
-
-                        for (let i = 0; i < results.length; i++) {
-                            ids.push(results[i].id);
-                        }
-                        obj.ids = ids;
-                        main.plastrela.estoque.est_volume._imprimirEtiqueta(obj);
-                    } catch (err) {
-                        return application.fatal(obj.res, err);
-                    }
-                }
-            }
             , apsobra: {
                 onsave: async function (obj, next) {
                     try {
@@ -8618,11 +8522,16 @@ let main = {
                             return application.error(obj.res, { msg: 'A quantidade apontada deve ser maior que 0', invalidfields: ['qtd'] });
                         }
 
-                        let apinsumo = await db.getModel('pcp_apinsumo').findOne({ where: { id: obj.register.idapinsumo } });
+                        const apinsumo = await db.getModel('pcp_apinsumo').findOne({ where: { id: obj.register.idapinsumo } });
                         if (!apinsumo) {
                             return application.error(obj.res, { msg: 'Este insumo não está mais apontado, verifique' });
                         }
-                        let volume = await db.getModel('est_volume').findOne({ where: { id: apinsumo.idvolume } });
+                        const volume = await db.getModel('est_volume').findOne({ where: { id: apinsumo.idvolume } });
+                        const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumo.idoprecurso } });
+                        const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
+                        if (recurso.iddepositoprodutivo != volume.iddeposito) {
+                            return application.error(obj.res, { msg: `O Volume ID ${volume.id} não está mais no depósito: ${recurso.est_deposito.descricao}` });
+                        }
 
                         if (volume.metragem) {
                             volume.metragem = (((parseFloat(volume.qtdreal) + parseFloat(obj.register.qtd)) * parseFloat(volume.metragem)) / parseFloat(apinsumo.qtd)).toFixed(2);
@@ -8659,8 +8568,13 @@ let main = {
                             const apinsumo = await db.getModel('pcp_apinsumo').findOne({ transaction: obj.transaction, where: { id: apsobras[i].idapinsumo } });
                             apinsumo.qtd = (parseFloat(apinsumo.qtd) + parseFloat(apsobras[i].qtd)).toFixed(4);
                             apinsumo.integrado = false;
-                            apinsumo.save({ iduser: obj.req.user.id, transaction: obj.transaction });
-                            const volume = await db.getModel('est_volume').findOne({ transaction: obj.transaction, where: { id: apinsumo.idvolume } });
+                            await apinsumo.save({ iduser: obj.req.user.id, transaction: obj.transaction });
+                            const volume = await db.getModel('est_volume').findOne({ transaction: obj.transaction, where: { id: apinsumo.idvolume } });                            
+                            const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumo.idoprecurso } });
+                            const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
+                            if (recurso.iddepositoprodutivo != volume.iddeposito) {                                
+                                return application.error(obj.res, { msg: `O Volume ID ${volume.id} não está mais no depósito: ${recurso.est_deposito.descricao}` });
+                            }
                             if (volume.metragem) {
                                 volume.metragem = (((parseFloat(apinsumo.qtd)) * parseFloat(volume.metragem)) / parseFloat(apsobras[i].qtd)).toFixed(2);
                             }
@@ -8668,7 +8582,7 @@ let main = {
                             if (parseFloat(volume.qtdreal) == 0) {
                                 volume.consumido = true;
                             }
-                            volume.save({ iduser: obj.req.user.id, transaction: obj.transaction });
+                            await volume.save({ iduser: obj.req.user.id, transaction: obj.transaction });
                         }
                         await next(obj);
                     } catch (err) {
