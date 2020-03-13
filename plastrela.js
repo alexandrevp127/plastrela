@@ -11580,6 +11580,7 @@ let main = {
                     try {
                         if (obj.register.id <= 0) {
                             obj.register.datahora_inclusao = moment();
+                            obj.register.iduser_solicitante = obj.req.user.id;
                         }
                         if (obj.register.tipo == 'Problema na Embalagem' && !obj.register.numero_nf) {
                             return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['numero_nf'] });
