@@ -8569,10 +8569,10 @@ let main = {
                             apinsumo.qtd = (parseFloat(apinsumo.qtd) + parseFloat(apsobras[i].qtd)).toFixed(4);
                             apinsumo.integrado = false;
                             await apinsumo.save({ iduser: obj.req.user.id, transaction: obj.transaction });
-                            const volume = await db.getModel('est_volume').findOne({ transaction: obj.transaction, where: { id: apinsumo.idvolume } });                            
+                            const volume = await db.getModel('est_volume').findOne({ transaction: obj.transaction, where: { id: apinsumo.idvolume } });
                             const oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: apinsumo.idoprecurso } });
                             const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
-                            if (recurso.iddepositoprodutivo != volume.iddeposito) {                                
+                            if (recurso.iddepositoprodutivo != volume.iddeposito) {
                                 return application.error(obj.res, { msg: `O Volume ID ${volume.id} não está mais no depósito: ${recurso.est_deposito.descricao}` });
                             }
                             if (volume.metragem) {
@@ -11578,6 +11578,9 @@ let main = {
             assistencia: {
                 onsave: async (obj, next) => {
                     try {
+                        if (obj.register.id <= 0) {
+                            obj.register.datahora_inclusao = moment();
+                        }
                         if (obj.register.tipo == 'Problema na Embalagem' && !obj.register.numero_nf) {
                             return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['numero_nf'] });
                         }
@@ -11632,9 +11635,9 @@ let main = {
                             report.saida_cliente = el.datahora_saidacliente;
                             report.chegada_empresa = el.datahora_chegadaempresa;
                             report.motivo = el.descricao_problema.replace(/(\r\n|\n|\r)/g, '<br>');
-                            report.contato = el.contatoassistente.replace(/(\r\n|\n|\r)/g, '<br>');
-                            report.servico = el.servicoexecutado.replace(/(\r\n|\n|\r)/g, '<br>');
-                            report.observacao = el.conclusao.replace(/(\r\n|\n|\r)/g, '<br>');
+                            report.contato = el.contatoassistente ? el.contatoassistente.replace(/(\r\n|\n|\r)/g, '<br>') : '';
+                            report.servico = el.servicoexecutado ? el.servicoexecutado.replace(/(\r\n|\n|\r)/g, '<br>') : '';
+                            report.observacao = el.conclusao ? el.conclusao.replace(/(\r\n|\n|\r)/g, '<br>') : '';
                             report.assistente = el.iduser_responsavel;
                             reports.push(report);
                         }
