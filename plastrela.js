@@ -11641,7 +11641,7 @@ let main = {
                             report.assistente = el.iduser_responsavel;
                             reports.push(report);
                         }
-                        let filename = await main.platform.report.f_generate('Qualidade - Assistência', reports);
+                        const filename = await main.platform.report.f_generate('Qualidade - Assistência', reports);
                         return application.success(obj.res, {
                             openurl: '/download/' + filename
                         });
