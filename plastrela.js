@@ -2350,7 +2350,8 @@ let main = {
             solicitacaoitem: {
                 onsave: async function (obj, next) {
                     try {
-                        let config = await db.getModel('cmp_config').findOne();
+                        const config = await db.getModel('cmp_config').findOne();
+                        let mailpostergacao;
                         if (obj.id == 0) {
                             obj.register.iduser = obj.req.user.id;
                             obj.register.datainclusao = moment();
@@ -2361,18 +2362,39 @@ let main = {
                             if (obj.register._previousDataValues.idestado == config.idsolicitacaoestadofinal) {
                                 return application.error(obj.res, { msg: 'Não é possivel modificar uma solicitação finalizada' });
                             }
-                            let versao = await db.getModel('pcp_versao').findOne({ where: { id: obj.register.idversao || 0 } });
-                            let item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
-                            let tpitem = await db.getModel('est_tpitem').findOne({ where: { id: item ? item.idtpitem : 0 } });
+                            const versao = await db.getModel('pcp_versao').findOne({ where: { id: obj.register.idversao || 0 } });
+                            const item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
+                            const tpitem = await db.getModel('est_tpitem').findOne({ where: { id: item ? item.idtpitem : 0 } });
                             if ([5].indexOf(tpitem.codigo) >= 0) {
-                                let groupusers = await db.getModel('groupusers').findOne({ where: { description: 'COMPRAS' } });
-                                let user = await db.getModel('users').findOne({ where: { id: obj.req.user.id } });
+                                const groupusers = await db.getModel('groupusers').findOne({ where: { description: 'COMPRAS' } });
+                                const user = await db.getModel('users').findOne({ where: { id: obj.req.user.id } });
                                 if (user.idgroupusers != groupusers.id) {
                                     return application.error(obj.res, { msg: 'Apenas o setor de COMPRAS pode alterar itens do tipo 5' });
                                 }
                             }
+                            if (obj.register.datapostergacao && obj.register._previousDataValues.datapostergacao != obj.register.datapostergacao) {
+                                const usercriacao = await db.getModel('users').findOne({ where: { id: obj.register.iduser } });
+                                const pedidoitem = await db.getModel('ven_pedidoitem').findOne({ where: { id: obj.register.idpedidoitem } });
+                                if (usercriacao && usercriacao.email) {
+                                    mailpostergacao = {
+                                        to: [usercriacao.email]
+                                        , subject: `SIP - Postergação Data de Entrega`
+                                        , html: `Produto: ${versao.descricaocompleta}<br/>
+                                            Pedido Item: ${pedidoitem.codigocompleto}<br/>
+                                            Quantidade: ${application.formatters.fe.decimal(obj.register.qtd, 4)}<br/>
+                                            Data Desejada: ${application.formatters.fe.date(obj.register.dataprevisao)}<br/>
+                                            Data Previsão: ${application.formatters.fe.date(obj.register.datadesejada)}<br/>
+                                            <b>Postergado Para: </b>${application.formatters.fe.date(obj.register.datapostergacao)}</br>`
+                                    };
+                                }
+                            }
                         }
-                        await next(obj);
+                        const saved = await next(obj);
+                        if (saved.success) {
+                            if (mailpostergacao) {
+                                main.platform.mail.f_sendmail(mailpostergacao);
+                            }
+                        }
                     } catch (err) {
                         return application.fatal(obj.res, err);
                     }
