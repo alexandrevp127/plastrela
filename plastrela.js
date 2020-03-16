@@ -2109,6 +2109,24 @@ let main = {
                     console.error(err);
                 }
             }
+            , s_geolocalizarCidade: async () => {
+                try {
+                    const sql = await db.sequelize.query(`select c.id, c.descricao || ', ' || e.descricao as geo from cad_cidade c left join cad_estado e on (c.idestado = e.id) where c.georeference is null 
+                    and c.id in (select distinct a.idcidade from iso_assistencia a)
+                    limit 10
+                    `, { type: db.Sequelize.QueryTypes.SELECT });
+                    for (let i = 0; i < sql.length; i++) {
+                        const geo = await main.platform.map.geocode(sql[i].geo);
+                        if (geo.length > 0) {
+                            await db.getModel('cad_cidade').update({ georeference: geo[0].geometry.location.lat + ',' + geo[0].geometry.location.lng }, { where: { id: sql[i].id } });
+                        } else {
+                            console.error('Unable to geolocation', sql[i], geo);
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
         , adm: {
             viagem: {
@@ -6835,6 +6853,9 @@ let main = {
                     try {
                         let config = await db.getModel('pcp_config').findOne();
                         let oprecurso = await db.getModel('pcp_oprecurso').findOne({ where: { id: obj.data.idoprecurso } });
+                        if (!oprecurso) {
+                            return application.error(obj.res, { msg: 'Retorne a listagem de OPs e entre novamente' });
+                        }
                         if (oprecurso.idestado == config.idestadoencerrada) {
                             return application.error(obj.res, { msg: 'Não é possível realizar apontamentos de OP encerrada' });
                         }
