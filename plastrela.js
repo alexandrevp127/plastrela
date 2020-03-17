@@ -8483,7 +8483,7 @@ let main = {
                         const recurso = await db.getModel('pcp_recurso').findOne({ include: [{ all: true }], where: { id: oprecurso.idrecurso } });
                         const opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
                         const etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
-                        // let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
+                        const op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
 
                         for (let i = 0; i < apinsumos.length; i++) {
                             if (apinsumos[i].pcp_oprecurso.idestado == config.idestadoencerrada) {
@@ -8523,13 +8523,13 @@ let main = {
                                 for (let i = 0; i < misturas.length; i++) {
                                     await db.getModel('pcp_apintegracao').create({
                                         integrado: false
-                                        , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||||||||.4.' + apinsumos[0].id + '-' + misturas[i].id
+                                        , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + `|${op.codigo}|${etapa.codigo}|||||||||||||.4.` + apinsumos[0].id + '-' + misturas[i].id
                                     }, { iduser: obj.req.user.id });
                                 }
                             } else {
                                 await db.getModel('pcp_apintegracao').create({
                                     integrado: false
-                                    , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + '|||||||||||||||.4.' + apinsumos[0].id
+                                    , texto: '40|' + (gconfig.cnpj == '90816133000557' ? 1 : 2) + `|${op.codigo}|${etapa.codigo}|||||||||||||.4.` + apinsumos[0].id
                                 }, { iduser: obj.req.user.id });
                             }
 
