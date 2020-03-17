@@ -374,6 +374,22 @@
         <rename/>
         <length>-2</length>
         <precision>-2</precision>
+      </field>      <field>        <name>GRUPO</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>SUBGRUPO</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>CLASSE</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>FAMILIA</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
       </field>        <select_unspecified>N</select_unspecified>
       <meta>        <name>EMPRESA</name>
         <rename>EMPRESA</rename>
@@ -690,6 +706,66 @@
         <grouping_symbol/>
         <currency_symbol/>
         <storage_type/>
+      </meta>      <meta>        <name>GRUPO</name>
+        <rename>GRUPO</rename>
+        <type>String</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
+      </meta>      <meta>        <name>SUBGRUPO</name>
+        <rename>SUBGRUPO</rename>
+        <type>String</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
+      </meta>      <meta>        <name>CLASSE</name>
+        <rename>CLASSE</rename>
+        <type>String</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
+      </meta>      <meta>        <name>FAMILIA</name>
+        <rename>FAMILIA</rename>
+        <type>String</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
       </meta>    </fields>     <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
       <xloc>168</xloc>
@@ -710,7 +786,7 @@
            <schema_name/>
            </partitioning>
     <connection>Iniflex</connection>
-    <sql>SELECT DISTINCT rnc.empresa AS EMPRESA&#xd;&#xa;   ,correntista.nome AS CORRENTISTA&#xd;&#xa;   ,rnc.data_rnc &#xd;&#xa;   ,tipo.descricao AS TIPO&#xd;&#xa;   ,motivo.descricao AS MOTIVO&#xd;&#xa;   ,setor.descricao AS SETOR&#xd;&#xa;   ,upper&#x28;defeito.turno&#x29; AS TURNO&#xd;&#xa;   ,rnc.codigo AS RNC&#xd;&#xa;   ,rnc.op AS OP&#xd;&#xa;   ,rnc.produto &#x7c;&#x7c; &#x27;&#x2f;&#x27; &#x7c;&#x7c; rnc.versao &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; item.descricao AS ITEM&#xd;&#xa;   ,causa.descricao AS CAUSA&#xd;&#xa;   ,avaliacao.descricao AS AVALIACAO&#xd;&#xa;   ,correcao.descricao AS ACAO&#xd;&#xa;   ,rnc.unidade_programada AS UNID_DEFEITOTURNO&#xd;&#xa;   ,defeito.valor AS VALOR_DEFEITOTURNO&#xd;&#xa;   ,defeito.quantidade AS QTDE_DEV&#xd;&#xa;   ,disposicao.quantidade_nconforme AS QTDE_NC&#xd;&#xa;   ,rnc.perc_naoconforme AS PERC_NC&#xd;&#xa;   ,rnc.situacao as SITUACAO&#xd;&#xa;   ,rnc.acao_eficaz as ACAO_EFICAZ&#xd;&#xa;   ,u.nome as RESPONSAVEL&#xd;&#xa;FROM isornc rnc&#xd;&#xa;LEFT JOIN isorncdefeito defeito ON&#x28;rnc.empresa &#x3d; defeito.empresa AND rnc.codigo &#x3d; defeito.rnc&#x29;&#xd;&#xa;LEFT JOIN estitem item ON&#x28;rnc.empresa &#x3d; item.empresa AND rnc.produto &#x3d; item.codigo&#x29;&#xd;&#xa;LEFT JOIN cadccusto setor ON&#x28;rnc.empresa &#x3d; setor.empresa AND rnc.setor_naoconforme &#x3d; setor.codigo&#x29;&#xd;&#xa;LEFT JOIN isornctipo tipo ON&#x28;rnc.empresa &#x3d; tipo.empresa AND rnc.tipo &#x3d; tipo.codigo&#x29;&#xd;&#xa;LEFT JOIN isomotivo motivo ON&#x28;rnc.motivo &#x3d; motivo.codigo&#x29;&#xd;&#xa;LEFT JOIN isorncaval avaliacao ON&#x28;rnc.empresa &#x3d; avaliacao.empresa AND rnc.avaliacao &#x3d; avaliacao.codigo&#x29;&#xd;&#xa;LEFT JOIN isocorrecao correcao ON&#x28;rnc.acao_corretiva &#x3d; correcao.codigo&#x29;&#xd;&#xa;LEFT JOIN isornccausa causa ON&#x28;defeito.causa &#x3d; causa.codigo&#x29;&#xd;&#xa;LEFT JOIN isorncdisposicao disposicao ON&#x28;rnc.empresa &#x3d; disposicao.empresa AND rnc.codigo &#x3d; disposicao.rnc&#x29;&#xd;&#xa;LEFT JOIN venpedido vp ON&#x28;rnc.empresa &#x3d; vp.empresa AND rnc.pedido &#x3d; vp.pedido&#x29;&#xd;&#xa;LEFT JOIN cadcorr correntista ON&#x28;vp.cliente &#x3d; correntista.codigo&#x29;&#xd;&#xa;LEFT JOIN asdusuario u  on &#x28;rnc.responsavel &#x3d; u.cpf&#x29;</sql>
+    <sql>SELECT DISTINCT rnc.empresa AS EMPRESA&#xd;&#xa;   ,correntista.nome AS CORRENTISTA&#xd;&#xa;   ,rnc.data_rnc &#xd;&#xa;   ,tipo.descricao AS TIPO&#xd;&#xa;   ,motivo.descricao AS MOTIVO&#xd;&#xa;   ,setor.descricao AS SETOR&#xd;&#xa;   ,upper&#x28;defeito.turno&#x29; AS TURNO&#xd;&#xa;   ,rnc.codigo AS RNC&#xd;&#xa;   ,rnc.op AS OP&#xd;&#xa;   ,rnc.produto &#x7c;&#x7c; &#x27;&#x2f;&#x27; &#x7c;&#x7c; rnc.versao &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; item.descricao AS ITEM&#xd;&#xa;	, g.descricao as grupo&#xd;&#xa;	, sg.descricao as subgrupo&#xd;&#xa;	, c.descricao as classe&#xd;&#xa;	, f.descricao as familia&#xd;&#xa;   ,causa.descricao AS CAUSA&#xd;&#xa;   ,avaliacao.descricao AS AVALIACAO&#xd;&#xa;   ,correcao.descricao AS ACAO&#xd;&#xa;   ,rnc.unidade_programada AS UNID_DEFEITOTURNO&#xd;&#xa;   ,defeito.valor AS VALOR_DEFEITOTURNO&#xd;&#xa;   ,defeito.quantidade AS QTDE_DEV&#xd;&#xa;   ,disposicao.quantidade_nconforme AS QTDE_NC&#xd;&#xa;   ,rnc.perc_naoconforme AS PERC_NC&#xd;&#xa;   ,rnc.situacao as SITUACAO&#xd;&#xa;   ,rnc.acao_eficaz as ACAO_EFICAZ&#xd;&#xa;   ,u.nome as RESPONSAVEL&#xd;&#xa;FROM isornc rnc&#xd;&#xa;LEFT JOIN isorncdefeito defeito ON&#x28;rnc.empresa &#x3d; defeito.empresa AND rnc.codigo &#x3d; defeito.rnc&#x29;&#xd;&#xa;LEFT JOIN estitem item ON&#x28;rnc.empresa &#x3d; item.empresa AND rnc.produto &#x3d; item.codigo&#x29;&#xd;&#xa;LEFT JOIN cadccusto setor ON&#x28;rnc.empresa &#x3d; setor.empresa AND rnc.setor_naoconforme &#x3d; setor.codigo&#x29;&#xd;&#xa;LEFT JOIN isornctipo tipo ON&#x28;rnc.empresa &#x3d; tipo.empresa AND rnc.tipo &#x3d; tipo.codigo&#x29;&#xd;&#xa;LEFT JOIN isomotivo motivo ON&#x28;rnc.motivo &#x3d; motivo.codigo&#x29;&#xd;&#xa;LEFT JOIN isorncaval avaliacao ON&#x28;rnc.empresa &#x3d; avaliacao.empresa AND rnc.avaliacao &#x3d; avaliacao.codigo&#x29;&#xd;&#xa;LEFT JOIN isocorrecao correcao ON&#x28;rnc.acao_corretiva &#x3d; correcao.codigo&#x29;&#xd;&#xa;LEFT JOIN isornccausa causa ON&#x28;defeito.causa &#x3d; causa.codigo&#x29;&#xd;&#xa;LEFT JOIN isorncdisposicao disposicao ON&#x28;rnc.empresa &#x3d; disposicao.empresa AND rnc.codigo &#x3d; disposicao.rnc&#x29;&#xd;&#xa;LEFT JOIN venpedido vp ON&#x28;rnc.empresa &#x3d; vp.empresa AND rnc.pedido &#x3d; vp.pedido&#x29;&#xd;&#xa;LEFT JOIN cadcorr correntista ON&#x28;vp.cliente &#x3d; correntista.codigo&#x29;&#xd;&#xa;LEFT JOIN asdusuario u  on &#x28;rnc.responsavel &#x3d; u.cpf&#x29;&#xd;&#xa;LEFT JOIN estitem i on &#x28;rnc.empresa &#x3d; i.empresa and rnc.produto &#x3d; i.codigo&#x29;&#xd;&#xa;LEFT JOIN estgrupo g on &#x28;rnc.empresa &#x3d; g.empresa and i.grupo &#x3d; g.codigo&#x29;&#xd;&#xa;LEFT JOIN estsubgrupo sg on &#x28;rnc.empresa &#x3d; sg.empresa and g.codigo &#x3d; sg.grupo and i.subgrupo &#x3d; sg.codigo&#x29;&#xd;&#xa;LEFT JOIN estclasse c on &#x28;rnc.empresa &#x3d; c.empresa and i.classe_produto &#x3d; c.codigo&#x29;&#xd;&#xa;LEFT JOIN estfamilia f on &#x28;rnc.empresa &#x3d; f.empresa and i.familia &#x3d; f.codigo&#x29;</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
@@ -836,6 +912,22 @@
         <field>
           <column_name>responsavel</column_name>
           <stream_name>RESPONSAVEL</stream_name>
+        </field>
+        <field>
+          <column_name>grupo</column_name>
+          <stream_name>GRUPO</stream_name>
+        </field>
+        <field>
+          <column_name>subgrupo</column_name>
+          <stream_name>SUBGRUPO</stream_name>
+        </field>
+        <field>
+          <column_name>classe</column_name>
+          <stream_name>CLASSE</stream_name>
+        </field>
+        <field>
+          <column_name>familia</column_name>
+          <stream_name>FAMILIA</stream_name>
         </field>
     </fields>
      <cluster_schema/>
