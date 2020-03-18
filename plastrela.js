@@ -12268,7 +12268,7 @@ let main = {
                         }
                         param = JSON.parse(param.value);
                         if (param.indexOf(obj.req.user.id) < 0) {
-                            return application.error(obj.res, { msg: 'Apenas o setor Comercial pode realizar esta ação' });
+                            return application.error(obj.res, { msg: 'Apenas o setor Expedição pode realizar esta ação' });
                         }
                         let embarques = await db.getModel('ven_embarque').findAll({ where: { id: { [db.Op.in]: obj.ids } } });
                         for (let i = 0; i < embarques.length; i++) {
