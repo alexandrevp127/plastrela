@@ -12262,7 +12262,7 @@ let main = {
                         if (obj.ids.length <= 0) {
                             return application.error(obj.res, { msg: application.message.selectOneEvent });
                         }
-                        let param = await db.getModel('parameter').findOne({ where: { key: 'ven_embarque_comercial' } });
+                        let param = await db.getModel('parameter').findOne({ where: { key: 'ven_embarque_expedicao' } });
                         if (!param) {
                             return application.error(obj.res, { msg: 'Parâmetro não configurado' });
                         }
