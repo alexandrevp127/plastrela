@@ -1199,13 +1199,13 @@ let main = {
     , plastrela: {
         auth: async function (req) {
             try {
-                let externo = await db.getModel('adm_usuarioexterno').findOne({ where: { iduser: req.user.id } });
+                const externo = await db.getModel('adm_usuarioexterno').findOne({ where: { iduser: req.user.id } });
                 if (externo) {
                     return true;
                 }
                 let ip = req.headers['x-real-ip'] // NGINX
                 if (!ip) {
-                    ip = req.ip; //express IPV6
+                    ip = req.ip || ''; //express IPV6
                 }
                 if (ip == '::1'                   // Localhost
                     || ip.match(/.*172.10.30.*/)  // Interna RS
@@ -1225,16 +1225,16 @@ let main = {
             }
         }
         , sync: async function () {
-            let config = await db.getModel('config').findOne();
-            let empresa = config.cnpj == "90816133000123" ? 2 : 1;
+            const config = await db.getModel('config').findOne();
+            const empresa = config.cnpj == "90816133000123" ? 2 : 1;
             main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_sync/Job.kjb`);
         }
         , schedule: {
             s_estoqueMinimo: async function () {
                 try {
-                    let param = await main.platform.parameter.f_get('est_estoqueminimo_notificacao');
+                    const param = await main.platform.parameter.f_get('est_estoqueminimo_notificacao');
                     if (param) {
-                        let sql = await db.sequelize.query(`
+                        const sql = await db.sequelize.query(`
                         select
                             x.*
                             , v.descricaocompleta as produto
@@ -1280,18 +1280,18 @@ let main = {
                 }
             }
             , integracaoApontamentos: async function () {
-                let config = await db.getModel('config').findOne();
-                let empresa = config.cnpj == "90816133000123" ? 2 : 1;
+                const config = await db.getModel('config').findOne();
+                const empresa = config.cnpj == "90816133000123" ? 2 : 1;
                 main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_integracaoap/Job.kjb`);
             }
             , integracaoVolumes: async function () {
-                let config = await db.getModel('config').findOne();
-                let empresa = config.cnpj == "90816133000123" ? 2 : 1;
+                const config = await db.getModel('config').findOne();
+                const empresa = config.cnpj == "90816133000123" ? 2 : 1;
                 main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_integracaovolumes/Job.kjb`);
             }
             , notificacaoReserva: async function () {
-                let config = await db.getModel('config').findOne();
-                let empresa = config.cnpj == "90816133000123" ? 2 : 1;
+                const config = await db.getModel('config').findOne();
+                const empresa = config.cnpj == "90816133000123" ? 2 : 1;
                 main.platform.kettle.f_runJob(`jobs/${empresa == 2 ? 'ms' : 'rs'}_notificacaoReserva/Job.kjb`);
             }
             , s_analiseMovimentacoesSemValor: async () => {
@@ -9003,7 +9003,7 @@ let main = {
                             return application.error(obj.res, { msg: 'Nâo é possível encerrar uma OP sem insumos' });
                         }
 
-                        if ([20, 200].indexOf(etapa.codigo) >= 0) { // Impressão
+                        if ([20, 200].indexOf(etapa.codigo) >= 0) { // Impressão sem etapa 25 (solução deslizante)
                             let apcliche = await db.getModel('pcp_apcliche').findOne({ where: { idoprecurso: oprecurso.id } });
                             if (!apcliche) {
                                 return application.error(obj.res, { msg: 'Não é possível encerrar uma OP de Impressão sem clichês montados' });
@@ -9120,9 +9120,9 @@ let main = {
                         oprecurso.integrado = 'P';
                         await oprecurso.save({ iduser: obj.req.user.id });
 
-                        return application.success(obj.res, { msg: application.message.success, redirect: '/v/apontamento_de_producao' });
+                        application.success(obj.res, { msg: application.message.success, redirect: '/v/apontamento_de_producao' });
                     } catch (err) {
-                        return application.fatal(obj.res, err);
+                        application.fatal(obj.res, err);
                     }
                 }
                 , js_totalperda: async function (obj) {
