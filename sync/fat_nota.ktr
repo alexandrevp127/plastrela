@@ -276,9 +276,53 @@
     </attributes>
   </connection>
   <order>
-  <hop> <from>Table input</from><to>Select values 2</to><enabled>Y</enabled> </hop>
   <hop> <from>Select values 2</from><to>Table output</to><enabled>Y</enabled> </hop>
+  <hop> <from>Table input</from><to>LK Estado</to><enabled>Y</enabled> </hop>
+  <hop> <from>LK Estado</from><to>LK Cidade</to><enabled>Y</enabled> </hop>
+  <hop> <from>LK Cidade</from><to>Select values 2</to><enabled>Y</enabled> </hop>
   </order>
+  <step>
+    <name>LK Estado</name>
+    <type>DBLookup</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+    <connection>SIPv2</connection>
+    <cache>Y</cache>
+    <cache_load_all>Y</cache_load_all>
+    <cache_size>0</cache_size>
+    <lookup>
+      <schema/>
+      <table>cad_estado</table>
+      <orderby/>
+      <fail_on_multiple>N</fail_on_multiple>
+      <eat_row_on_failure>N</eat_row_on_failure>
+      <key>
+        <name>UF</name>
+        <field>sigla</field>
+        <condition>&#x3d;</condition>
+        <name2/>
+      </key>
+      <value>
+        <name>id</name>
+        <rename>idestado</rename>
+        <default/>
+        <type>Integer</type>
+      </value>
+    </lookup>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>172</xloc>
+      <yloc>38</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
   <step>
     <name>Select values 2</name>
     <type>SelectValues</type>
@@ -339,6 +383,10 @@
         <length>-2</length>
         <precision>-2</precision>
       </field>      <field>        <name>TIPO_OPERACAO</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>idcidade</name>
         <rename/>
         <length>-2</length>
         <precision>-2</precision>
@@ -538,9 +586,24 @@
         <grouping_symbol/>
         <currency_symbol/>
         <storage_type/>
+      </meta>      <meta>        <name>idcidade</name>
+        <rename>idcidade</rename>
+        <type>Integer</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
       </meta>    </fields>     <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>168</xloc>
+      <xloc>454</xloc>
       <yloc>38</yloc>
       <draw>Y</draw>
       </GUI>
@@ -558,7 +621,7 @@
            <schema_name/>
            </partitioning>
     <connection>Iniflex</connection>
-    <sql>select&#xd;&#xa;        nt.empresa&#xd;&#xa;        , nt.nota&#xd;&#xa;        , case&#xd;&#xa;                when nt.situacao &#x3d; &#x27;C&#x27; then &#x27;Cancelada&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;D&#x27; then &#x27;Denegada&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;E&#x27; then &#x27;Editando&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;N&#x27; then &#x27;Normal &#x28;Fechada&#x29;&#x27;&#xd;&#xa;                else &#x27;N&#x2f;I&#x27;&#xd;&#xa;        end as situacao&#xd;&#xa;        , nt.data_saida as data&#xd;&#xa;        , cc.nome as cliente&#xd;&#xa;        , ct.nome as transportador&#xd;&#xa;        , cv.nome as vendedor&#xd;&#xa;        , ni.item &#x7c;&#x7c; &#x27;&#x2f;&#x27; &#x7c;&#x7c; ni.versao &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; i.descricao as produto&#xd;&#xa;        , ni.quantidade&#xd;&#xa;        , ni.unitario&#xd;&#xa;        , ni.comissao&#xd;&#xa;        , ni.faturamento_liquido&#xd;&#xa;        , case&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;C&#x27; then &#x27;Compra&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;D&#x27; then &#x27;Devolu&#xe7;&#xe3;o&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;O&#x27; then &#x27;Outros&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;V&#x27; then &#x27;Venda&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;A&#x27; then &#x27;Venda Antecipada&#x27;&#xd;&#xa;                else &#x27;N&#x2f;I&#x27;&#xd;&#xa;        end as tipo_operacao&#xd;&#xa;from fatnota nt&#xd;&#xa;left join fatnotait ni on &#x28;nt.empresa &#x3d; ni.empresa and nt.nota &#x3d; ni.nota and nt.serie &#x3d; ni.serie&#x29;&#xd;&#xa;left join fiscfopvar cvar on &#x28;ni.cfop &#x3d; cvar.cfop and ni.var_cfop &#x3d; cvar.variacao&#x29;&#xd;&#xa;left join cadcorr cc on &#x28;nt.cliente &#x3d; cc.codigo&#x29;&#xd;&#xa;left join cadcorr ct on &#x28;nt.transportador &#x3d; ct.codigo&#x29;&#xd;&#xa;left join cadvendedor cv on &#x28;nt.empresa &#x3d; cv.empresa and nt.vendedor &#x3d; cv.codigo&#x29;&#xd;&#xa;left join estitem i on &#x28;nt.empresa &#x3d; i.empresa and ni.item &#x3d; i.codigo&#x29;&#xd;&#xa;where nt.data_saida is not null</sql>
+    <sql>select&#xd;&#xa;        nt.empresa&#xd;&#xa;        , nt.nota&#xd;&#xa;        , case&#xd;&#xa;                when nt.situacao &#x3d; &#x27;C&#x27; then &#x27;Cancelada&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;D&#x27; then &#x27;Denegada&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;E&#x27; then &#x27;Editando&#x27;&#xd;&#xa;                when nt.situacao &#x3d; &#x27;N&#x27; then &#x27;Normal &#x28;Fechada&#x29;&#x27;&#xd;&#xa;                else &#x27;N&#x2f;I&#x27;&#xd;&#xa;        end as situacao&#xd;&#xa;        , nt.data_saida as data&#xd;&#xa;        , cc.nome as cliente&#xd;&#xa;        , ct.nome as transportador&#xd;&#xa;        , cv.nome as vendedor&#xd;&#xa;        , ni.item &#x7c;&#x7c; &#x27;&#x2f;&#x27; &#x7c;&#x7c; ni.versao &#x7c;&#x7c; &#x27; - &#x27; &#x7c;&#x7c; i.descricao as produto&#xd;&#xa;        , ni.quantidade&#xd;&#xa;        , ni.unitario&#xd;&#xa;        , ni.comissao&#xd;&#xa;        , ni.faturamento_liquido&#xd;&#xa;        , case&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;C&#x27; then &#x27;Compra&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;D&#x27; then &#x27;Devolu&#xe7;&#xe3;o&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;O&#x27; then &#x27;Outros&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;V&#x27; then &#x27;Venda&#x27;&#xd;&#xa;                when cvar.tipo_relatorio &#x3d; &#x27;A&#x27; then &#x27;Venda Antecipada&#x27;&#xd;&#xa;                else &#x27;N&#x2f;I&#x27;&#xd;&#xa;        end as tipo_operacao&#xd;&#xa;	, cid.cidade&#xd;&#xa;	, cid.uf&#xd;&#xa;from fatnota nt&#xd;&#xa;left join fatnotait ni on &#x28;nt.empresa &#x3d; ni.empresa and nt.nota &#x3d; ni.nota and nt.serie &#x3d; ni.serie&#x29;&#xd;&#xa;left join fiscfopvar cvar on &#x28;ni.cfop &#x3d; cvar.cfop and ni.var_cfop &#x3d; cvar.variacao&#x29;&#xd;&#xa;left join cadcorr cc on &#x28;nt.cliente &#x3d; cc.codigo&#x29;&#xd;&#xa;left join cadcorr ct on &#x28;nt.transportador &#x3d; ct.codigo&#x29;&#xd;&#xa;left join cadvendedor cv on &#x28;nt.empresa &#x3d; cv.empresa and nt.vendedor &#x3d; cv.codigo&#x29;&#xd;&#xa;left join estitem i on &#x28;nt.empresa &#x3d; i.empresa and ni.item &#x3d; i.codigo&#x29;&#xd;&#xa;left join cadcidade cid on &#x28;cc.loc_cidade &#x3d; cid.codigo&#x29;&#xd;&#xa;where nt.data_saida is not null</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
@@ -653,11 +716,63 @@
           <column_name>tipo_operacao</column_name>
           <stream_name>TIPO_OPERACAO</stream_name>
         </field>
+        <field>
+          <column_name>idcidade</column_name>
+          <stream_name>idcidade</stream_name>
+        </field>
     </fields>
      <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
-      <xloc>299</xloc>
+      <xloc>585</xloc>
       <yloc>38</yloc>
+      <draw>Y</draw>
+      </GUI>
+    </step>
+
+  <step>
+    <name>LK Cidade</name>
+    <type>DBLookup</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+         <partitioning>
+           <method>none</method>
+           <schema_name/>
+           </partitioning>
+    <connection>SIPv2</connection>
+    <cache>Y</cache>
+    <cache_load_all>Y</cache_load_all>
+    <cache_size>0</cache_size>
+    <lookup>
+      <schema/>
+      <table>cad_cidade</table>
+      <orderby/>
+      <fail_on_multiple>N</fail_on_multiple>
+      <eat_row_on_failure>N</eat_row_on_failure>
+      <key>
+        <name>idestado</name>
+        <field>idestado</field>
+        <condition>&#x3d;</condition>
+        <name2/>
+      </key>
+      <key>
+        <name>CIDADE</name>
+        <field>descricao</field>
+        <condition>&#x3d;</condition>
+        <name2/>
+      </key>
+      <value>
+        <name>id</name>
+        <rename>idcidade</rename>
+        <default/>
+        <type>Integer</type>
+      </value>
+    </lookup>
+     <cluster_schema/>
+ <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
+      <xloc>295</xloc>
+      <yloc>40</yloc>
       <draw>Y</draw>
       </GUI>
     </step>

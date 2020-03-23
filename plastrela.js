@@ -2113,6 +2113,7 @@ let main = {
                 try {
                     const sql = await db.sequelize.query(`select c.id, c.descricao || ', ' || e.descricao as geo from cad_cidade c left join cad_estado e on (c.idestado = e.id) where c.georeference is null 
                     and c.id in (select distinct a.idcidade from iso_assistencia a)
+                    and c.id in (select distinct a.idcidade from fat_snota a)
                     limit 10
                     `, { type: db.Sequelize.QueryTypes.SELECT });
                     for (let i = 0; i < sql.length; i++) {
