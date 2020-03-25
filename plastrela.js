@@ -8171,7 +8171,7 @@ let main = {
                                     return application.error(obj.res, { msg: 'Volume não encontrado' });
                                 }
                             case '#':
-                                return application.error(obj.res, { msg: 'Opção desabilitada' });
+                                // return application.error(obj.res, { msg: 'Opção desabilitada' });
                                 let bc = obj.data.codigodebarra.substring(1, obj.data.codigodebarra.length).split('-');
                                 let item = await db.getModel('cad_item').findOne({ where: { codigo: bc[0].split('/')[0] } })
                                 if (!item) {
@@ -8932,7 +8932,6 @@ let main = {
                     if (obj.id == 0) {
                         if (config && config.idestadoinicial) {
                             obj.register.idestado = config.idestadoinicial;
-                            await next(obj);
                         } else {
                             return application.error(obj.res, { msg: 'Falta configuração em: Estado Inicial da OP' });
                         }
@@ -8940,12 +8939,16 @@ let main = {
                         if (obj.register.idestado == config.idestadoencerrada) {
                             return application.error(obj.res, { msg: 'OP está encerrada' });
                         }
-                        const apparada = await db.getModel('pcp_apparada').findOne({ where: { idoprecurso: obj.register.id } });
-                        if (obj.register.idrecurso != obj.register._previousDataValues.idrecurso && apparada) {
-                            return application.error(obj.res, { msg: 'Não é possível alterar a máquina de uma OP com apontamentos' });
-                        }
-                        await next(obj);
+                        // const apparada = await db.getModel('pcp_apparada').findOne({ where: { idoprecurso: obj.register.id } });
+                        // if (obj.register.idrecurso != obj.register._previousDataValues.idrecurso && apparada) {
+                        //     return application.error(obj.res, { msg: 'Não é possível alterar a máquina de uma OP com apontamentos' });
+                        // }
                     }
+                    obj._responseModifier = function (ret) {
+                        ret.historyBack = false;
+                        return ret;
+                    };
+                    await next(obj);
                 }
                 , js_encerrar: async function (obj) {
                     try {
@@ -8955,6 +8958,7 @@ let main = {
                             return application.error(obj.res, { msg: 'OP já se encontra encerrada' });
                         }
                         let opetapa = await db.getModel('pcp_opetapa').findOne({ where: { id: oprecurso.idopetapa } });
+                        let op = await db.getModel('pcp_op').findOne({ where: { id: opetapa.idop } });
                         let etapa = await db.getModel('pcp_etapa').findOne({ where: { id: opetapa.idetapa } });
                         let tprecurso = await db.getModel('pcp_tprecurso').findOne({ where: { id: etapa.idtprecurso } });
 
@@ -9103,14 +9107,161 @@ let main = {
                             }
                         }
 
-                        // Encerrar com Quantidade a menos
-                        // let qtdapproducaovolume = parseFloat((await db.sequelize.query('select sum(apv.qtd) as sum from pcp_approducaovolume apv left join pcp_approducao ap on (apv.idapproducao = ap.id) where ap.idoprecurso =' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
-                        // let msg = `ATENÇÃO!<br>A OP possui menos quantidade que o programado, para encerrá-la, faça a liberação na opção "Aprovar Encerramento"`;
-                        // if (parseFloat(oprecurso.quantidade) - qtdapproducaovolume > 3000) {
-                        //     return application.error(obj.res, { msg: msg });
-                        // } else if (parseFloat(oprecurso.quantidade) - qtdapproducaovolume > parseFloat(oprecurso.quantidade) * 0.1) {
-                        //     return application.error(obj.res, { msg: msg });
-                        // }
+                        if ([30, 35, 300, 350].indexOf(etapa.codigo) >= 0) {
+                            const sqlcomb = await db.sequelize.query(`
+                            select
+                                string_agg(codigo::text,'-' order by codigo) as comb
+                            from
+                                (select distinct i.codigo from
+                                    pcp_apinsumo api
+                                left join est_volume v on (api.idvolume = v.id)
+                                left join pcp_versao ver on (v.idversao = ver.id)
+                                left join cad_item i on (ver.iditem = i.id)
+                                left join est_grupo g on (i.idgrupo = g.id)
+                                left join est_subgrupo sg on (i.idsubgrupo = sg.id)
+                                where
+                                    api.idoprecurso = ${oprecurso.id}
+                                    and g.codigo = 505) as x
+                            `, { type: db.Sequelize.QueryTypes.SELECT });
+                            const comb = sqlcomb.length > 0 ? sqlcomb[0].comb : null;
+                            if (comb) {
+                                const metragem = parseFloat((await db.sequelize.query(`
+                                select
+                                    sum(qtd) as metragem
+                                from
+                                    pcp_oprecurso opr
+                                left join pcp_approducao app on (opr.id = app.idoprecurso)
+                                left join pcp_approducaovolume apv on (app.id = apv.idapproducao)
+                                where
+                                    opr.id = ${oprecurso.id}
+                                `, { type: db.Sequelize.QueryTypes.SELECT }))[0].metragem || 0);
+                                const larguraembob = application.formatters.be.decimal((await db.sequelize.query(`
+                                select
+                                    f.valor
+                                from
+                                    pcp_ficha f
+                                left join pcp_atribficha af on (f.idatributo = af.id)
+                                where
+                                    f.idversao = ${op.idversao} 
+                                    and af.codigo = 1197
+                                `, { type: db.Sequelize.QueryTypes.SELECT }))[0].valor) / 1000;
+                                const sqlgramatura = await db.sequelize.query(`
+                                select
+                                    oprc.resultado
+                                from
+                                    pcp_oprecursoconferencia oprc
+                                left join pcp_atributoconferencia ac on (oprc.idatributoconferencia = ac.id)
+                                where
+                                    oprc.idoprecurso = ${oprecurso.id}
+                                    and descricao ilike 'Gramatura%'
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                                let gramaturamin = 0;
+                                let gramaturamax = 0;
+                                for (let i = 0; i < sqlgramatura.length; i++) {
+                                    const r = application.formatters.be.decimal(sqlgramatura[i].resultado);
+                                    if (i == 0) {
+                                        gramaturamin = r;
+                                        gramaturamax = r;
+                                    } else {
+                                        if (r < gramaturamin) {
+                                            gramaturamin = r;
+                                        }
+                                        if (r > gramaturamax) {
+                                            gramaturamax = r;
+                                        }
+                                    }
+                                }
+                                const gramatura = (gramaturamin + gramaturamax) / 2;
+                                const sqladesivo = await db.sequelize.query(`
+                                select
+                                    api.id
+                                    , api.idvolume
+                                    , i.codigo 
+                                    , v.qtdreal + api.qtd as qtdreal 
+                                    , api.qtd as apontado
+                                from
+                                    pcp_apinsumo api
+                                left join est_volume v on (api.idvolume = v.id)
+                                left join pcp_versao ver on (v.idversao = ver.id)
+                                left join cad_item i on (ver.iditem = i.id)
+                                left join est_grupo g on (i.idgrupo = g.id)
+                                left join est_subgrupo sg on (i.idsubgrupo = sg.id)
+                                where
+                                    api.idoprecurso = ${oprecurso.id}
+                                    and g.codigo = 505
+                                    and sg.codigo = 1
+                                order by api.datahora, api.id                               
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                                const sqlcatalizador = await db.sequelize.query(`
+                                select
+                                    api.id
+                                    , api.idvolume
+                                    , i.codigo 
+                                    , v.qtdreal + api.qtd as qtdreal
+                                    , api.qtd as apontado
+                                from
+                                    pcp_apinsumo api
+                                left join est_volume v on (api.idvolume = v.id)
+                                left join pcp_versao ver on (v.idversao = ver.id)
+                                left join cad_item i on (ver.iditem = i.id)
+                                left join est_grupo g on (i.idgrupo = g.id)
+                                left join est_subgrupo sg on (i.idsubgrupo = sg.id)
+                                where
+                                    api.idoprecurso = ${oprecurso.id}
+                                    and g.codigo = 505
+                                    and sg.codigo = 2
+                                order by api.datahora, api.id                               
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                                let consumoadesivo = 0;
+                                let consumocatalizador = 0;
+                                if (comb == '500166-500175') {
+                                    consumoadesivo = (metragem * larguraembob * gramatura * 0.56) + 5000;
+                                    consumoadesivo = parseFloat((consumoadesivo / 1000).toFixed(4));
+                                    consumocatalizador = (metragem * larguraembob * gramatura * 0.44) + 3900;
+                                    consumocatalizador = parseFloat((consumocatalizador / 1000).toFixed(4));
+                                } else if (comb == '502020-502954') {
+                                    consumoadesivo = (metragem * larguraembob * gramatura * 0.5618) + 5000;
+                                    consumoadesivo = parseFloat((consumoadesivo / 1000).toFixed(4));
+                                    consumocatalizador = (metragem * larguraembob * gramatura * 0.4382) + 3900;
+                                    consumocatalizador = parseFloat((consumocatalizador / 1000).toFixed(4));
+                                } else {
+                                    return application.error(obj.res, { msg: 'Combinação de Adesivo e catalizador não reconhecido' });
+                                }
+                                for (let i = 0; i < sqladesivo.length; i++) {
+                                    const el = sqladesivo[i];
+                                    const qtdreal = parseFloat(el.qtdreal);
+                                    if (i == sqladesivo.length - 1) {//Consumir tudo
+                                        // console.log('consumir tudo', consumoadesivo, (qtdreal - consumoadesivo).toFixed(4));
+                                        await db.getModel('pcp_apinsumo').update({ qtd: consumoadesivo, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: (qtdreal - consumoadesivo).toFixed(4), consumido: consumoadesivo >= qtdreal }, { where: { id: el.idvolume } });
+                                    } else if (qtdreal > consumoadesivo) {
+                                        // console.log('volume tem qtd', consumoadesivo, qtdreal.toFixed(4));
+                                        await db.getModel('pcp_apinsumo').update({ qtd: consumoadesivo, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: qtdreal.toFixed(4), consumido: false }, { where: { id: el.idvolume } });
+                                    } else {
+                                        // console.log('consumo excede volume', qtdreal, 0);
+                                        await db.getModel('pcp_apinsumo').update({ qtd: qtdreal, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: 0, consumido: true }, { where: { id: el.idvolume } });
+                                        consumoadesivo -= qtdreal;
+                                    }
+                                }
+                                for (let i = 0; i < sqlcatalizador.length; i++) {
+                                    const el = sqlcatalizador[i];
+                                    const qtdreal = parseFloat(el.qtdreal);
+                                    if (i == sqlcatalizador.length - 1) {//Consumir tudo
+                                        await db.getModel('pcp_apinsumo').update({ qtd: consumocatalizador, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: (qtdreal - consumocatalizador).toFixed(4), consumido: consumocatalizador >= qtdreal }, { where: { id: el.idvolume } });
+                                    } else if (qtdreal > consumocatalizador) {
+                                        await db.getModel('pcp_apinsumo').update({ qtd: consumocatalizador, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: qtdreal.toFixed(4), consumido: false }, { where: { id: el.idvolume } });
+                                    } else {
+                                        await db.getModel('pcp_apinsumo').update({ qtd: qtdreal, integrado: false }, { where: { id: el.id } });
+                                        await db.getModel('est_volume').update({ qtdreal: 0, consumido: true }, { where: { id: el.idvolume } });
+                                        consumocatalizador -= qtdreal;
+                                    }
+                                }
+                            }
+                        }
 
                         let opconjugadas = await db.getModel('pcp_opconjugada').findAll({ where: { idopprincipal: oprecurso.id } });
                         for (let i = 0; i < opconjugadas.length; i++) {
