@@ -1818,7 +1818,7 @@ let main = {
                     let query = null;
                     query = await needle('post', 'http://172.10.30.18/SistemaH/scripts/socket/scripts2socket.php', {
                         function: 'PLAIniflexSQL', param: JSON.stringify([`
-                        select it.empresa, it.data_cadastro AS DATA, it.codigo, trim(it.descricao) as descricao, u.nome
+                        select it.empresa, it.codigo, trim(it.descricao) as descricao, u.nome
                         from estitem it 
                         left join asdusuario u on (it.usuario_cadastro = u.cpf)
                         where it.empresa = 1 
@@ -1828,7 +1828,7 @@ let main = {
                         or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 8 and centro_custo = '102009' and operacao = 'E') = 0
                         or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 9 and centro_custo = '102007' and operacao = 'E') = 0
                         or (select count(*) from estitemdeposito where it.empresa = empresa and it.codigo = item and deposito = 10 and centro_custo = '102008' and operacao = 'E') = 0)
-                        order by it.data_cadastro
+                        order by it.codigo
                         `])
                     });
                     query = JSON.parse(query.body);
@@ -1837,10 +1837,9 @@ let main = {
                         <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
                             <thead>
                                 <tr>
-                                    <td style="text-align:center;"><strong>Data</strong></td>      
                                     <td style="text-align:center;"><strong>Item</strong></td>
                                     <td style="text-align:center;"><strong>Descrição</strong></td>
-                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>  
+                                    <td style="text-align:center;"><strong>Quem Cadastrou</strong></td>                                    
                                 </tr>
                             </thead>
                             <tbody>
@@ -1848,7 +1847,6 @@ let main = {
                         for (let j = 0; j < query.count; j++) {
                             body += `
                                 <tr>
-                                    <td style="text-align:center;"> ${query.data['DATA'][j]} </td>
                                     <td style="text-align:center;"> ${query.data['CODIGO'][j]} </td>
                                     <td style="text-align:left;"> ${query.data['DESCRICAO'][j]} </td>
                                     <td style="text-align:center;"> ${query.data['NOME'][j]} </td>
