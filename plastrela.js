@@ -9107,7 +9107,8 @@ let main = {
                             }
                         }
 
-                        if ([30, 35, 300, 350].indexOf(etapa.codigo) >= 0) {
+                        const gconfig = await db.getModel('config').findOne();
+                        if ([30, 35, 300, 350].indexOf(etapa.codigo) >= 0 && gconfig.cnpj == '90816133000557') {
                             const sqlcomb = await db.sequelize.query(`
                             select
                                 string_agg(codigo::text,'-' order by codigo) as comb
