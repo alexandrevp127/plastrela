@@ -317,6 +317,16 @@
         <rename>atividade</rename>
         <update>Y</update>
       </value>
+      <value>
+        <name>catcnh</name>
+        <rename>catcnh</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>vencnh</name>
+        <rename>vencnh</rename>
+        <update>Y</update>
+      </value>
     </lookup>
      <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
@@ -346,6 +356,14 @@
         <length>-2</length>
         <precision>-2</precision>
       </field>      <field>        <name>atividade</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>catcnh</name>
+        <rename/>
+        <length>-2</length>
+        <precision>-2</precision>
+      </field>      <field>        <name>vencnh</name>
         <rename/>
         <length>-2</length>
         <precision>-2</precision>
@@ -395,6 +413,36 @@
         <grouping_symbol/>
         <currency_symbol/>
         <storage_type/>
+      </meta>      <meta>        <name>catcnh</name>
+        <rename>catcnh</rename>
+        <type>String</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
+      </meta>      <meta>        <name>vencnh</name>
+        <rename>vencnh</rename>
+        <type>Date</type>
+        <length>-2</length>
+        <precision>-2</precision>
+        <conversion_mask/>
+        <date_format_lenient>false</date_format_lenient>
+        <date_format_locale/>
+        <date_format_timezone/>
+        <lenient_string_to_number>false</lenient_string_to_number>
+        <encoding/>
+        <decimal_symbol/>
+        <grouping_symbol/>
+        <currency_symbol/>
+        <storage_type/>
       </meta>    </fields>     <cluster_schema/>
  <remotesteps>   <input>   </input>   <output>   </output> </remotesteps>    <GUI>
       <xloc>144</xloc>
@@ -415,7 +463,7 @@
            <schema_name/>
            </partitioning>
     <connection>Senior</connection>
-    <sql>select &#xd;&#xa;        &#x2a;&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                CONCAT&#x28;l.nomloc, &#x27; &#x28;&#x27;, c.titcar, &#x27;&#x29;&#x27;&#x29;&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r024car c on &#x28;f.codcar &#x3d; c.codcar&#x29;&#xd;&#xa;        left join r016orn l on &#x28;f.numloc &#x3d; l.numloc&#x29;&#xd;&#xa;        where f.numcpf &#x3d; x.cpf and f.sitafa &#x21;&#x3d; 7&#x29; as atividade&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                cpl.numcid&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;        where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1 and f.numcpf &#x3d; x.cpf&#x29; as rg&#xd;&#xa;        from &#xd;&#xa;                &#x28;select distinct&#xd;&#xa;                        f.nomfun as nome&#xd;&#xa;                        , f.numcpf as cpf&#xd;&#xa;                from&#xd;&#xa;                        r034fun f&#xd;&#xa;                left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;                where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1&#x29; as x&#xd;&#xa;order by 1</sql>
+    <sql>select &#xd;&#xa;        &#x2a;&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                CONCAT&#x28;l.nomloc, &#x27; &#x28;&#x27;, c.titcar, &#x27;&#x29;&#x27;&#x29;&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r024car c on &#x28;f.codcar &#x3d; c.codcar&#x29;&#xd;&#xa;        left join r016orn l on &#x28;f.numloc &#x3d; l.numloc&#x29;&#xd;&#xa;        where f.numcpf &#x3d; x.cpf and f.sitafa &#x21;&#x3d; 7&#x29; as atividade&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                cpl.numcid&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;        where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1 and f.numcpf &#x3d; x.cpf&#x29; as rg&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                cpl.catcnh&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;        where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1 and f.numcpf &#x3d; x.cpf&#x29; as catcnh&#xd;&#xa;        , &#x28;select distinct top 1&#xd;&#xa;                cpl.vencnh&#xd;&#xa;        from r034fun f&#xd;&#xa;        left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;        where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1 and f.numcpf &#x3d; x.cpf&#x29; as vencnh&#xd;&#xa;        from &#xd;&#xa;                &#x28;select distinct&#xd;&#xa;                        f.nomfun as nome&#xd;&#xa;                        , f.numcpf as cpf&#xd;&#xa;                from&#xd;&#xa;                        r034fun f&#xd;&#xa;                left join r034cpl cpl on &#x28;f.numcad &#x3d; cpl.numcad&#x29;&#xd;&#xa;                where f.numemp &#x3d; 156 and f.codfil &#x3d; 3 and f.tipcol &#x3d; 1&#x29; as x&#xd;&#xa;order by 1</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
