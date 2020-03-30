@@ -2128,6 +2128,45 @@ let main = {
                     console.error(err);
                 }
             }
+            , s_cnhVencida: async () => {
+                try {
+                    const param = await main.platform.parameter.f_get('prt_cnhvencida');
+                    if (param) {
+                        const sql = await db.sequelize.query(`
+                        select
+                            v.nome
+                            , v.vencnh
+                        from
+                            prt_permissaoveiculo pv
+                        left join prt_visitante v on (pv.idvisitante = v.id)
+                        where
+                            extract('days' from now() - v.vencnh) >= 0`, { type: { type: db.Sequelize.QueryTypes.SELECT } });
+                        if (sql.length <= 0)
+                            return;
+                        let body = `
+                        <table border="1" cellpadding="1" cellspacing="0" style="border-collapse:collapse;width:100%">
+                            <tr>
+                                <td style="text-align:center;"><strong>Nome</strong></td>
+                                <td style="text-align:center;"><strong>Vencimento</strong></td>
+                            </tr>`;
+                        for (let i = 0; i < sql.length; i++) {
+                            body += `
+                            <tr>
+                                <td style="text-align:left;"> ${sql[i].nome} </td>
+                                <td style="text-align:center;"> ${application.formatters.fe.date(sql[i].vencnh)} </td>
+                            </tr>`;
+                        }
+                        body += `</table></div>`;
+                        main.platform.mail.f_sendmail({
+                            to: param
+                            , subject: 'SIP - CNH Vencida'
+                            , html: body
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
         , adm: {
             viagem: {
