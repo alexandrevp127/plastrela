@@ -8307,8 +8307,8 @@ let main = {
                         //     return application.error(obj.res, { msg: application.message.invalidFields, invalidfields: ['idsubstituto'] });
                         // }
 
-                        if (deposito && deposito.codigo == 5) {
-                            return application.error(obj.res, { msg: 'Não é possível consumir volumes que estão no almoxarifado' });
+                        if (deposito && [3, 5, 14, 15, 16, 19, 20].indexOf(deposito.codigo) >= 0) {
+                            return application.error(obj.res, { msg: 'Não é possível consumir volumes que estão no depósito: ' + deposito.descricao });
                         }
                         if (qtd <= 0) {
                             return application.error(obj.res, { msg: 'A quantidade apontada deve ser maior que 0', invalidfields: ['qtd'] });
