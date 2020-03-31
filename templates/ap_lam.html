@@ -1,0 +1,77 @@
+<div class="hidden">
+    {{{hidden}}}
+</div>
+
+<div class="col-md-12">
+    <div class="box box-primary">
+        <div class="box-body">
+            <h4 class="title_subview">Temperatura</h4>
+            <div id="z1" class="row">
+                {{{z1}}}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-md-6">
+    <div class="box box-primary">
+        <div class="box-body">
+            <h4 class="title_subview">Pressão</h4>
+            <div id="z2" class="row">
+                {{{z2}}}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-md-6">
+    <div class="box box-primary">
+        <div class="box-body">
+            <h4 class="title_subview">Tensão</h4>
+            <div id="z3" class="row">
+                {{{z3}}}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-md-12">
+    <div class="box box-primary">
+        <div class="box-body">
+            <div id="z4" class="row">
+                {{{z4}}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        if (application.functions.getId() == 0) {
+            application.jsfunction('plastrela.pcp.oprecursolam.js_ultimaConf', { idoprecurso: application.functions.getUrlParameter('parent') }, function (response) {
+                if (response.success && response.data.count > 0) {
+                    const el = response.data.rows[0];
+                    $('input[name="aplicacao_adesivo"]').val(el.aplicacao_adesivo);
+                    application.functions.setAutocomplete($('select[name="calandra"]'), el.calandra, el.calandra);
+                    $('input[name="cola"]').val(el.cola);
+                    $('input[name="datahora"]').val(el.datahora);
+                    $('input[name="idoprecurso"]').val(el.idoprecurso);
+                    $('input[name="pressao_aplicador"]').val(el.pressao_aplicador);
+                    $('input[name="pressao_compactador"]').val(el.pressao_compactador);
+                    $('input[name="pressao_nip"]').val(el.pressao_nip);
+                    $('input[name="pressao_perc"]').val(el.pressao_perc);
+                    $('input[name="pressao_r3"]').val(el.pressao_r3);
+                    application.functions.setAutocomplete($('select[name="retratando"]'), el.retratando, el.retratando);
+                    $('input[name="temp_aplicador"]').val(el.temp_aplicador);
+                    $('input[name="temp_nip"]').val(el.temp_nip);
+                    $('input[name="temp_r1r2"]').val(el.temp_r1r2);
+                    $('input[name="temperatura_ambiente"]').val(el.temperatura_ambiente);
+                    $('input[name="tensao_aplicado"]').val(el.tensao_aplicado);
+                    $('input[name="tensao_db1"]').val(el.tensao_db1);
+                    $('input[name="tensao_db2"]').val(el.tensao_db2);
+                    $('input[name="tensao_perc"]').val(el.tensao_perc);
+                    $('input[name="tensao_rebob"]').val(el.tensao_rebob);
+                    $('input[name="umidade"]').val(el.umidade);
+                    $('input[name="velocidade_maquina"]').val(el.velocidade_maquina);
+                }
+            });
+        }
+    });
+</script>

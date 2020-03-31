@@ -11212,6 +11212,26 @@ let main = {
                     }
                 }
             }
+            , oprecursolam: {
+                onsave: async (obj, next) => {
+                    try {
+                        if (obj.register.id == 0) {
+                            obj.register.datahora = moment();
+                        }
+                        await next(obj);
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+                , js_ultimaConf: async (obj) => {
+                    try {
+                        const oprl = await main.platform.model.findAll('pcp_oprecursolam', { raw: true, where: { idoprecurso: obj.data.idoprecurso || 0 }, order: [['datahora', 'desc']] });
+                        application.success(obj.res, { data: oprl });
+                    } catch (err) {
+                        application.fatal(obj.res, err);
+                    }
+                }
+            }
             , js_conferenciaAp: async function (obj) {
                 try {
 
@@ -11790,17 +11810,18 @@ let main = {
                         if (!obj.register.iduser_cedente) {
                             obj.register.iduser_cedente = obj.req.user.id;
                         }
-                        // const visitante = await db.getModel('prt_visitante').findOne({ where: { id: obj.register.idvisitante || 0 } });
-                        // if (!visitante) {
-                        //     return application.error(obj.res, { msg: 'Funcionário não encontrado' });
-                        // }
-                        // if (!visitante.vencnh) {
-                        //     return application.error(obj.res, { msg: 'Funcionário não possui CNH' });
-                        // }
-                        // const vencnh = moment(visitante.vencnh, application.formatters.be.date_format);
-                        // if (moment().diff(vencnh, 'day') > 0) {
-                        //     return application.error(obj.res, { msg: `A CNH de ${visitante.nome} venceu na data ${vencnh.format(application.formatters.fe.date_format)}` });
-                        // }
+                        const visitante = await db.getModel('prt_visitante').findOne({ where: { id: obj.register.idvisitante || 0 } });
+                        if (!visitante) {
+                            return application.error(obj.res, { msg: 'Funcionário não encontrado' });
+                        }
+                        const permissao = await db.getModel('prt_permissaoveiculo').findOne({ where: { idvisitante: obj.register.idvisitante || 0 } });
+                        if (!permissao) {
+                            return application.error(obj.res, { msg: 'Funcionário não possui permissão para pegar veículos' });
+                        }
+                        const vencnh = moment(visitante.vencnh, application.formatters.be.date_format);
+                        if (moment().diff(vencnh, 'day') > 0) {
+                            return application.error(obj.res, { msg: `A CNH de ${visitante.nome} venceu na data ${vencnh.format(application.formatters.fe.date_format)}` });
+                        }
                         await next(obj);
                     } catch (err) {
                         application.fatal(obj.res, err);
