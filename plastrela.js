@@ -9192,7 +9192,7 @@ let main = {
                                 where
                                     f.idversao = ${op.idversao} 
                                     and af.codigo = 1197
-                                `, { type: db.Sequelize.QueryTypes.SELECT }))[0].valor) / 1000;
+                                `, { type: db.Sequelize.QueryTypes.SELECT }))[0].valor) / 100;
                                 const sqlgramatura = await db.sequelize.query(`
                                 select
                                     oprc.resultado
