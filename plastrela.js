@@ -9032,7 +9032,7 @@ let main = {
                         left join cad_item i on (ver.iditem = i.id)
                         left join est_grupo g on (i.idgrupo = g.id)
                         where api.idoprecurso = ${oprecurso.id}
-                        and g.codigo not in (505)
+                        and (g.codigo not in (505) or g.codigo is null)
                         `, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
                         let qtdapperda = parseFloat((await db.sequelize.query('select sum(app.peso) as sum from pcp_apperda app left join pcp_tipoperda tp on (app.idtipoperda = tp.id) where tp.codigo not in (300, 322) and app.idoprecurso = ' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
                         let pesolapproducaovolume = parseFloat((await db.sequelize.query('select sum(apv.pesoliquido) as sum from pcp_approducaovolume apv left join pcp_approducao ap on (apv.idapproducao = ap.id) where ap.idoprecurso =' + oprecurso.id, { type: db.sequelize.QueryTypes.SELECT }))[0].sum || 0);
