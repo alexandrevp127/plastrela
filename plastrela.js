@@ -9027,7 +9027,7 @@ let main = {
 
                         let qtdapinsumo = parseFloat((await db.sequelize.query(`
                         select sum(api.qtd) as sum from pcp_apinsumo api
-                        left join est_volume v on (ai.idvolume = v.id)
+                        left join est_volume v on (api.idvolume = v.id)
                         left join pcp_versao ver on (v.idversao = ver.id)
                         left join cad_item i on (ver.iditem = i.id)
                         left join est_grupo g on (i.idgrupo = g.id)
