@@ -4253,7 +4253,7 @@ let main = {
                                         }
                                     }
                                 }
-                                if ([3, 4, 5, 14, 16].indexOf(volumes[i].est_deposito.codigo) == -1) {
+                                if ([3, 4, 5, 14, 16, 20].indexOf(volumes[i].est_deposito.codigo) == -1) {
                                     return application.error(obj.res, { msg: `O volume ID ${volumes[i].id} está em um depósito não permitido para requisição` });
                                 }
                                 if (volumes[i].iddepositoendereco && volumes[i].est_depositoendereco.retido) {
@@ -9308,6 +9308,8 @@ let main = {
                                         consumocatalizador -= qtdreal;
                                     }
                                 }
+                            } else {
+                                return application.error(obj.res, { msg: 'Nâo é possível encerrar uma OP sem adesivo/catalizador apontado' });
                             }
                         }
 
