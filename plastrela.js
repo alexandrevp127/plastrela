@@ -12550,6 +12550,13 @@ let main = {
                             }
                         }
                         await db.getModel('ven_embarque').update({ aprovadoretirada: true }, { where: { id: { [db.Op.in]: obj.ids } }, iduser: obj.req.user.id });
+                        const embs = await main.platform.model.findAll('ven_embarque', { where: { id: { [db.Op.in]: obj.ids } } });
+                        for (let i = 0; i < embs.count; i++) {
+                            main.platform.notification.create(param, {
+                                title: 'Retirada Aprovada'
+                                , description: `${embs.rows[i].previsaodata} @ ${embs.rows[i].idpedido} ${embs.rows[i].idversao} - ${obj.req.user.fullname}`
+                            });
+                        }
                         return application.success(obj.res, { msg: application.message.success, reloadtables: true });
                     } catch (err) {
                         return application.fatal(obj.res, err);
