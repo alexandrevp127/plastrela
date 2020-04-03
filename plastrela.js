@@ -11235,7 +11235,31 @@ let main = {
                 }
                 , js_ultimaConf: async (obj) => {
                     try {
-                        const oprl = await main.platform.model.findAll('pcp_oprecursolam', { raw: true, where: { idoprecurso: obj.data.idoprecurso || 0 }, order: [['datahora', 'desc']] });
+                        const oprecurso = await db.getModel('pcp_oprecurso').findOne({ raw: true, where: { id: obj.data.idoprecurso || 0 } });
+                        if (!oprecurso) {
+                            return application.success(obj.res, { data: null });
+                        }
+                        const opetapa = await db.getModel('pcp_opetapa').findOne({ raw: true, where: { id: oprecurso.idopetapa } });
+                        const op = await db.getModel('pcp_op').findOne({ raw: true, where: { id: opetapa.idop } });
+                        const oprlq = await db.sequelize.query(`
+                        select
+                            oprl.*
+                        from
+                            pcp_oprecurso opr
+                        inner join pcp_oprecursolam oprl on (oprl.idoprecurso = opr.id)
+                        left join pcp_opetapa ope on (opr.idopetapa = ope.id)
+                        left join pcp_op op on (ope.idop = op.id)
+                        where
+                            op.idversao = ${op.idversao}
+                            and opr.idrecurso = ${oprecurso.idrecurso}
+                        order by oprl.datahora desc
+                        limit 1
+                            `
+                            , {
+                                type: db.Sequelize.QueryTypes.SELECT
+                            }
+                        );
+                        const oprl = await main.platform.model.findAll('pcp_oprecursolam', { raw: true, where: { id: oprlq.length > 0 ? oprlq[0].id : 0 } });
                         application.success(obj.res, { data: oprl });
                     } catch (err) {
                         application.fatal(obj.res, err);
