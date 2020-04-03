@@ -9183,7 +9183,7 @@ let main = {
                                 where
                                     opr.id = ${oprecurso.id}
                                 `, { type: db.Sequelize.QueryTypes.SELECT }))[0].metragem || 0);
-                                const larguraembob = application.formatters.be.decimal((await db.sequelize.query(`
+                                let larguraembob = await db.sequelize.query(`
                                 select
                                     f.valor
                                 from
@@ -9192,7 +9192,12 @@ let main = {
                                 where
                                     f.idversao = ${op.idversao} 
                                     and af.codigo = 1197
-                                `, { type: db.Sequelize.QueryTypes.SELECT }))[0].valor) / 100;
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                                if (larguraembob[0].valor.includes('.')) {
+                                    larguraembob[0].valor = larguraembob[0].valor.replace('.', ',');
+                                }
+                                larguraembob = application.formatters.be.decimal(larguraembob[0].valor) / 100;
+
                                 const sqlgramatura = await db.sequelize.query(`
                                 select
                                     oprc.resultado
