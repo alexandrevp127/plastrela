@@ -8285,9 +8285,11 @@ let main = {
                             }
                         }
                         let versao = await db.getModel('pcp_versao').findOne({ where: { id: volume.idversao } });
+                        const item = await db.getModel('cad_item').findOne({ where: { id: versao ? versao.iditem : 0 } });
+                        const grupo = await db.getModel('est_grupo').findOne({ where: { id: item ? item.idgrupo : 0 } });
                         let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
                         let deposito = await db.getModel('est_deposito').findOne({ where: { id: volume.iddeposito } });
-                        let qtd = application.formatters.be.decimal(obj.data.qtd);
+                        let qtd = grupo && grupo.codigo == 505 && gconfig.cnpj == '90816133000557' ? 1.0 : application.formatters.be.decimal(obj.data.qtd);
 
                         // let sql = await db.sequelize.query(`
                         // select 
