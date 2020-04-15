@@ -9269,6 +9269,9 @@ let main = {
                                 `, { type: db.Sequelize.QueryTypes.SELECT });
                                 let consumoadesivo = 0;
                                 let consumocatalizador = 0;
+                                if (gramatura == 0) {
+                                    return application.error(obj.res, { msg: 'Gramatura não registrada.' });
+                                }
                                 if (comb == '500166-500175') {
                                     consumoadesivo = (metragem * larguraembob * gramatura * 0.56) + 5000;
                                     consumoadesivo = parseFloat((consumoadesivo / 1000).toFixed(4));
@@ -11163,6 +11166,34 @@ let main = {
                         }
                         if (obj.data.confatributo == '' || obj.data.confresul == '') {
                             return application.error(obj.res, { msg: 'Informe o resultado para o atributo selecionado' });
+                        }
+
+                        const atributo = await db.getModel('pcp_atributoconferencia').findOne({ where: { id: obj.data.confatributo } });
+
+                        if (atributo.descricao.includes('Gramatura')) {
+                            const oprecurso = await db.getModel('pcp_oprecurso').findOne({ raw: true, where: { id: obj.data.idoprecurso || 0 } });
+                            const opetapa = await db.getModel('pcp_opetapa').findOne({ raw: true, where: { id: oprecurso.idopetapa } });
+                            const op = await db.getModel('pcp_op').findOne({ raw: true, where: { id: opetapa.idop } });
+                            
+                            let gramatura = await db.sequelize.query(`
+                                select
+                                    f.valor
+                                from
+                                    pcp_ficha f
+                                left join pcp_atribficha af on (f.idatributo = af.id)
+                                where
+                                    f.idversao = ${op.idversao} 
+                                    and af.codigo = 943
+                                `, { type: db.Sequelize.QueryTypes.SELECT });
+                            if (gramatura[0].valor.includes('.')) {
+                                gramatura[0].valor = gramatura[0].valor.replace('.', ',');
+                            }
+                            gramatura = application.formatters.be.decimal(gramatura[0].valor);
+
+                            const resultado = application.formatters.be.decimal(obj.data.confresul);
+                            if (resultado > gramatura * 2 || resultado < gramatura / 2) {
+                                return application.error(obj.res, { msg: 'Gramatura muito acima/abaixo da tolerância.' });
+                            }
                         }
 
                         await db.getModel('pcp_oprecursoconferencia').create({
