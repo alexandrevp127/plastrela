@@ -11192,7 +11192,7 @@ let main = {
 
                             const resultado = application.formatters.be.decimal(obj.data.confresul);
                             if (resultado > gramatura * 2 || resultado < gramatura / 2) {
-                                return application.error(obj.res, { msg: 'Gramatura muito acima/abaixo da tolerância.' });
+                                return application.error(obj.res, { msg: 'Gramatura 2x acima/abaixo do especificado na ficha técnica do item.' });
                             }
                         }
 
