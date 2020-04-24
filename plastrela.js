@@ -8065,8 +8065,9 @@ let main = {
                     body += '<div class="' + (obj.data.etapa != 10 ? 'hidden' : '') + '"><div class="col-md-6 no-padding">';
                     for (let i = 1; i <= 10; i++) {
                         if (i == 6) {
-                            body += '</div><div class="col-md-6 no-padding">';
+                            body += '</div><div class="col-sm-6 no-padding">';
                         }
+                        body += '<div style="height:70px;">';
                         body += application.components.html.checkbox({
                             width: '4'
                             , name: 'recipiente' + i
@@ -8077,6 +8078,7 @@ let main = {
                             , name: 'perc' + i
                             , placeholder: '%'
                         });
+                        body += '</div>';
                     }
                     body += '</div></div>';
 
@@ -8289,7 +8291,7 @@ let main = {
                         const grupo = await db.getModel('est_grupo').findOne({ where: { id: item ? item.idgrupo : 0 } });
                         let volumereservas = await db.getModel('est_volumereserva').findAll({ where: { idvolume: volume.id } });
                         let deposito = await db.getModel('est_deposito').findOne({ where: { id: volume.iddeposito } });
-                        let qtd = grupo && grupo.codigo == 505 && gconfig.cnpj == '90816133000557' ? 1.0 : application.formatters.be.decimal(obj.data.qtd);
+                        let qtd = grupo && grupo.codigo == 505 && gconfig.cnpj == '90816133000557' ? 0.0001 : application.formatters.be.decimal(obj.data.qtd);
 
                         // let sql = await db.sequelize.query(`
                         // select 
